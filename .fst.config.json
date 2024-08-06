@@ -1,0 +1,18 @@
+{ "fstar_exe":"fstar.exe",
+  "options":["--cache_dir", "${DY_HOME}/cache", "--hint_dir", "${DY_HOME}/hints", "--use_hints", "--record_hints"],
+  "include_dirs":[
+    "${COMPARSE_HOME}/src", 
+    "${DY_HOME}/src/core", 
+    "${DY_HOME}/src/lib", 
+    "${DY_HOME}/src/lib/comparse", 
+    "${DY_HOME}/src/lib/event",
+    "${DY_HOME}/src/lib/crypto",
+    "${DY_HOME}/src/lib/state", 
+    "${DY_HOME}/src/lib/utils",
+    "${DY_HOME}/src/lib/communication",
+    "src/single_conf_message",
+    "src/single_auth_message",
+    "src/single_conf_and_auth_message",
+    "src/login"
+  ] 
+}
