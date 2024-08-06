@@ -11,38 +11,38 @@ open DY.Example.SingleConfMessage.Protocol.Stateful
 
 (*** Trace invariants ***)
 
-let state_predicate_protocol: local_state_predicate login_state = {
+let state_predicate_protocol: local_state_predicate single_message_state = {
   pred = (fun tr prin state_id st ->
     match st with
-    | ClientState server secret -> (
-      let client = prin in
-      get_label secret == join (principal_label client) (principal_label server) /\
-      is_knowable_by (join (principal_label client) (principal_label server)) tr secret
+    | SenderState receiver secret -> (
+      let sender = prin in
+      get_label secret == join (principal_label sender) (principal_label receiver) /\
+      is_knowable_by (join (principal_label sender) (principal_label receiver)) tr secret
     )
-    | ServerState secret payload -> (
-      let server = prin in
-      (exists client. event_triggered tr server (ServerReceivedMsg client server secret payload) /\
-        is_knowable_by (join (principal_label client) (principal_label server)) tr secret /\
-        is_knowable_by (join (principal_label client) (principal_label server)) tr payload
+    | ReceiverState secret payload -> (
+      let receiver = prin in
+      (exists sender. event_triggered tr receiver (ReceiverReceivedMsg sender receiver secret payload) /\
+        is_knowable_by (join (principal_label sender) (principal_label receiver)) tr secret /\
+        is_knowable_by (join (principal_label sender) (principal_label receiver)) tr payload
       ) //\/ is_publishable tr secret
     )
   );
-  pred_later = (fun tr1 tr2 client state_id st -> ());
-  pred_knowable = (fun tr client state_id st -> ());
+  pred_later = (fun tr1 tr2 sender state_id st -> ());
+  pred_knowable = (fun tr sender state_id st -> ());
 }
 
-let event_predicate_protocol: event_predicate login_event =
+let event_predicate_protocol: event_predicate single_message_event =
   fun tr prin e ->
     match e with
-    | ClientSendMsg sender receiver secret -> True
-    | ServerReceivedMsg sender receiver secret payload -> (
+    | SenderSendMsg sender receiver secret -> True
+    | ReceiverReceivedMsg sender receiver secret payload -> (
       event_triggered tr receiver (CommConfReceiveMsg sender receiver payload)
     )
 
 let all_sessions = [
   pki_tag_and_invariant;
   private_keys_tag_and_invariant;
-  (local_state_login_state.tag, local_state_predicate_to_local_bytes_state_predicate state_predicate_protocol);
+  (local_state_single_message_state.tag, local_state_predicate_to_local_bytes_state_predicate state_predicate_protocol);
 ]
 
 /// List of all local event predicates.
@@ -53,16 +53,14 @@ let comm_layer_event_preds = {
   send_conf = (fun tr sender receiver payload -> 
     exists secret.
       let smsg:single_message = {secret} in
-      event_triggered tr sender (ClientSendMsg sender receiver secret) /\
+      event_triggered tr sender (SenderSendMsg sender receiver secret) /\
       decode_message payload == Some smsg
   )
 }
 
-
-
 let all_events = [
   event_predicate_communication_layer_and_tag comm_layer_event_preds;
-  (event_login_event.tag, compile_event_pred event_predicate_protocol)
+  (event_single_message_event.tag, compile_event_pred event_predicate_protocol)
 ]
 
 /// Create the global trace invariants.
@@ -113,17 +111,17 @@ let protocol_invariants_protocol_has_nsl_event_invariant = all_events_has_all_ev
 (*** Proofs ***)
 
 val prepare_message_proof:
-  tr:trace -> client:principal -> server:principal ->
+  tr:trace -> sender:principal -> receiver:principal ->
   Lemma
   (requires
     trace_invariant tr
   )
   (ensures (
-    let (_, tr_out) = prepare_message client server tr in
+    let (_, tr_out) = prepare_message sender receiver tr in
     trace_invariant tr_out
   ))
-  [SMTPat (trace_invariant tr); SMTPat (prepare_message client server tr)]
-let prepare_message_proof tr client server = ()
+  [SMTPat (trace_invariant tr); SMTPat (prepare_message sender receiver tr)]
+let prepare_message_proof tr sender receiver = ()
 
 
 #push-options "--fuel 0 --ifuel 3"
@@ -142,17 +140,17 @@ let send_message_proof tr comm_keys_ids sender receiver state_id =
   match send_message comm_keys_ids sender receiver state_id tr with
   | (None, tr_out) -> ()
   | (Some msg_id, tr_out) -> (
-    let (Some (ClientState receiver secret), tr) = get_state sender state_id tr in
+    let (Some (SenderState receiver secret), tr) = get_state sender state_id tr in
     compute_message_proof tr sender receiver secret;
     let payload = compute_message secret in
     
-    let ((), tr) = trigger_event sender (ClientSendMsg sender receiver secret) tr in
+    let ((), tr) = trigger_event sender (SenderSendMsg sender receiver secret) tr in
     assert(has_communication_layer_invariants crypto_invariants_protocol);
     assert(has_communication_layer_event_predicates protocol_invariants_protocol comm_layer_event_preds);    
     send_confidential_proof tr comm_layer_event_preds comm_keys_ids sender receiver payload;
     let (Some msg_id, tr) = send_confidential comm_keys_ids sender receiver payload tr in
     assert(tr_out == tr);
-    assert(event_predicate_protocol tr sender (ClientSendMsg sender receiver secret));
+    assert(event_predicate_protocol tr sender (SenderSendMsg sender receiver secret));
     ()
   )
 
@@ -175,10 +173,10 @@ let receive_message_proof tr comm_keys_ids receiver msg_id =
     let (Some {sender; receiver=receiver'; payload}, tr) = receive_confidential comm_keys_ids receiver msg_id tr in
     decode_message_proof tr sender receiver payload;
     let Some {secret} = decode_message payload in
-    let ((), tr) = trigger_event receiver (ServerReceivedMsg sender receiver secret payload) tr in
-    assert(event_triggered tr receiver (ServerReceivedMsg sender receiver secret payload));
+    let ((), tr) = trigger_event receiver (ReceiverReceivedMsg sender receiver secret payload) tr in
+    assert(event_triggered tr receiver (ReceiverReceivedMsg sender receiver secret payload));
     let (state_id, tr) = new_session_id receiver tr in
-    let ((), tr) = set_state receiver state_id (ServerState secret payload) tr in
+    let ((), tr) = set_state receiver state_id (ReceiverState secret payload) tr in
     assert(tr_out == tr);
     ()
   )

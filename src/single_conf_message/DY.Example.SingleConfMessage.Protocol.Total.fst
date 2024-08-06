@@ -16,36 +16,18 @@ type single_message = {
 %splice [ps_single_message] (gen_parser (`single_message))
 %splice [ps_single_message_is_well_formed] (gen_is_well_formed_lemma (`single_message))
 
-[@@with_bytes bytes]
-type test_message = {
-  sender:principal;
-  secret:bytes;
-}
-
-%splice [ps_test_message] (gen_parser (`test_message))
-%splice [ps_test_message_is_well_formed] (gen_is_well_formed_lemma (`test_message))
-
-[@@with_bytes bytes]
-type message =
-  | Msg: single_message -> message
-  | Test: test_message -> message
-
-%splice [ps_message] (gen_parser (`message))
-%splice [ps_message_is_well_formed] (gen_is_well_formed_lemma (`message))
-
-instance parseable_serializeable_bytes_message: parseable_serializeable bytes message
-  = mk_parseable_serializeable ps_message
+instance parseable_serializeable_bytes_message: parseable_serializeable bytes single_message
+  = mk_parseable_serializeable ps_single_message
 
 
 (*** Protocol ***)
 
 val compute_message: bytes -> bytes
 let compute_message secret =
-  let msg = Msg {secret;} in
-  serialize message msg
+  let msg = {secret;} in
+  serialize single_message msg
 
 val decode_message: bytes -> option single_message
 let decode_message msg_bytes =
-  let? msg = parse message msg_bytes in
-  guard (Msg? msg);?
-  Some (Msg?._0 msg)
+  let? msg = parse single_message msg_bytes in
+  Some msg

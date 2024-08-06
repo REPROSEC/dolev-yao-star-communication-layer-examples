@@ -15,11 +15,10 @@ val receiver_authentication:
   Lemma
   (requires
     trace_invariant tr /\
-    event_triggered tr receiver (ServerReceivedMsg sender receiver secret (compute_message secret))
-    
+    event_triggered tr receiver (ReceiverReceivedMsg sender receiver secret (compute_message secret))
   )
   (ensures
-    event_triggered tr sender (ClientSendMsg sender receiver secret) \/
+    event_triggered tr sender (SenderSendMsg sender receiver secret) \/
     is_publishable tr (compute_message secret)
   )
 let receiver_authentication tr sender receiver secret = ()
@@ -30,7 +29,7 @@ val secret_secrecy_sender:
   (requires
     trace_invariant tr /\
     attacker_knows tr secret /\
-    (exists sess_id. state_was_set tr sender sess_id (ClientState receiver secret))
+    (exists sess_id. state_was_set tr sender sess_id (SenderState receiver secret))
   )
   (ensures
     is_corrupt tr (principal_label sender) \/ is_corrupt tr (principal_label receiver)
