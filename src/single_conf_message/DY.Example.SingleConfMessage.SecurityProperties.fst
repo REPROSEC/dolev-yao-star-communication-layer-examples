@@ -11,7 +11,9 @@ open DY.Example.SingleConfMessage.Protocol.Stateful.Proof
 #set-options "--fuel 0 --ifuel 0 --z3rlimit 10  --z3cliopt 'smt.qi.eager_threshold=100'"
 
 val receiver_authentication:
-  tr:trace -> sender:principal -> receiver:principal -> secret:bytes ->
+  tr:trace ->
+  sender:principal -> receiver:principal ->
+  secret:bytes ->
   Lemma
   (requires
     trace_invariant tr /\

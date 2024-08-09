@@ -1,11 +1,11 @@
-module DY.Example.SingleConfMessage.Protocol.Total
+module DY.Example.SingleAuthMessage.Protocol.Total
 
 open Comparse
 open DY.Core
 open DY.Lib
 
 (*
-  C -> S: pkenc(pk_server, nonce, {sender; receiver; {secret}})
+  C -> S: {sender; receiver; {secret}; sign(sk_sender, nonce, {sender; receiver; {secret}})
 *)
 
 [@@with_bytes bytes]

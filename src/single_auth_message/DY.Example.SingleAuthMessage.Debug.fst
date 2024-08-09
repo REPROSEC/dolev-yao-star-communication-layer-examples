@@ -1,8 +1,8 @@
-module DY.Example.SingleConfMessage.Debug
+module DY.Example.SingleAuthMessage.Debug
 
 open DY.Core
 open DY.Lib
-open DY.Example.SingleConfMessage.Protocol.Stateful
+open DY.Example.SingleAuthMessage.Protocol.Stateful
 
 (*** Example Protocol Run with Trace Printing ***)
 
