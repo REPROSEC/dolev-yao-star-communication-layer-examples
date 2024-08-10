@@ -36,7 +36,7 @@ let event_predicate_protocol: event_predicate single_message_event =
     match e with
     | SenderSendMsg sender secret -> True
     | ReceiverReceivedMsg sender receiver secret payload -> (
-      exists vk_sender. event_triggered tr receiver (CommAuthReceiveMsg sender receiver vk_sender payload)
+      event_triggered tr receiver (CommAuthReceiveMsg sender receiver payload)
     )
 
 let all_sessions = [
@@ -137,14 +137,13 @@ val send_message_proof:
   [SMTPat (trace_invariant tr); SMTPat (send_message comm_keys_ids sender receiver state_id tr)]
 let send_message_proof tr comm_keys_ids sender receiver state_id =
   match send_message comm_keys_ids sender receiver state_id tr with
-  | (None, tr_out) -> admit()
+  | (None, tr_out) -> ()
   | (Some msg_id, tr_out) -> (
     let (Some (SenderState sender' secret), tr) = get_state sender state_id tr in
     assert(is_publishable tr secret);
     assert(event_triggered tr sender (SenderSendMsg sender secret));
     compute_message_proof tr sender receiver secret;
-    let payload = compute_message secret in
-    let ((), tr) = trigger_event sender (SenderSendMsg sender secret) tr in   
+    let payload = compute_message secret in  
     send_authenticated_proof tr comm_layer_event_preds comm_keys_ids sender receiver payload;
     let (Some msg_id, tr) = send_authenticated comm_keys_ids sender receiver payload tr in
     assert(tr_out == tr);

@@ -54,7 +54,6 @@ let send_message comm_keys_ids sender receiver state_id =
   match st with
   | SenderState sender secret -> (
     let msg = compute_message secret in
-    trigger_event sender (SenderSendMsg sender secret);*
     let*? msg_id = send_authenticated comm_keys_ids sender receiver msg in
     return (Some msg_id)
   )
