@@ -43,7 +43,9 @@ let secret_secrecy_sender tr sender receiver secret =
   attacker_only_knows_publishable_values tr secret;
   ()
 
-// Since the message is authenticated we can prove from the receiver's perspective that if the attacker knows the secret, either the sender or the receiver is corrupt.
+// Since the message is authenticated we can prove from the receiver's
+// perspective that if the attacker knows the secret, either the sender or the
+// receiver is corrupt.
 val secret_secrecy_receiver:
   tr:trace -> sender:principal -> receiver:principal -> secret:bytes ->
   Lemma
