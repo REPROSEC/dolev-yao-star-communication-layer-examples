@@ -10,9 +10,8 @@ open DY.Example.SingleAuthMessage.Protocol.Stateful.Proof
 
 #set-options "--fuel 0 --ifuel 0 --z3rlimit 10 --z3cliopt 'smt.qi.eager_threshold=100'"
 
-// For authenticated messages we can prove on the
-// receiver side that either the sender triggered
-// a send event or the sender is corrupt.
+// For authenticated messages we can prove on the receiver side that either the
+// sender triggered a send event or the sender is corrupt.
 val sender_authentication:
   tr:trace -> i:timestamp ->
   sender:principal -> receiver:principal ->
@@ -28,11 +27,9 @@ val sender_authentication:
   )
 let sender_authentication tr i sender receiver secret = ()
 
-// This is the same securtiy lemma as above but
-// with the events from the communication layer.
-// This allows us to argue with the `(prefix tr i)`
-// function. (Not sure why this does not work
-// in the lemma above)
+// This is the same securtiy lemma as above but with the events from the
+// communication layer. This allows us to argue with the `(prefix tr i)`
+// function. (Not sure why this does not work in the lemma above)
 val sender_authentication':
   tr:trace -> i:timestamp ->
   sender:principal -> receiver:principal ->

@@ -33,10 +33,11 @@ let event_predicate_protocol: event_predicate single_message_event =
   fun tr prin e ->
     match e with
     | SenderSendMsg sender receiver secret -> True
-    | ReceiverReceivedMsg sender receiver secret payload -> (
-      is_knowable_by (join (principal_label sender) (principal_label receiver)) tr secret /\
-      is_knowable_by (join (principal_label sender) (principal_label receiver)) tr payload /\
-      event_triggered tr receiver (CommConfReceiveMsg sender receiver payload)
+    | ReceiverReceivedMsg receiver secret payload -> (
+      exists sender.
+        is_knowable_by (join (principal_label sender) (principal_label receiver)) tr secret /\
+        is_knowable_by (join (principal_label sender) (principal_label receiver)) tr payload /\
+        event_triggered tr receiver (CommConfReceiveMsg receiver payload)
     )
 
 let all_sessions = [
@@ -47,10 +48,13 @@ let all_sessions = [
 
 /// List of all local event predicates.
 
+// This is just a demonstration how to use the `comm_higher_layer_event_preds`.
+// If you don't need them you can just initialize them with
+// `default_comm_higher_layer_event_preds`.
 val comm_layer_event_preds: comm_higher_layer_event_preds
 let comm_layer_event_preds = {
   default_comm_higher_layer_event_preds with
-  send_conf = (fun tr sender receiver payload -> 
+  send_conf = (fun sender receiver payload tr -> 
     exists secret.
       event_triggered tr sender (SenderSendMsg sender receiver secret) /\
       decode_message payload == Some {secret} /\
@@ -182,17 +186,17 @@ let receive_message_proof tr comm_keys_ids receiver msg_id =
   match receive_message comm_keys_ids receiver msg_id tr with
   | (None, tr_out) -> ()
   | (Some state_id, tr_out) -> (
-    let (Some {sender; receiver=receiver'; payload}, tr) = receive_confidential comm_keys_ids receiver msg_id tr in
-    decode_message_proof tr sender receiver payload;
+    let (Some payload, tr) = receive_confidential comm_keys_ids receiver msg_id tr in
+    decode_message_proof tr receiver payload;
     let Some {secret} = decode_message payload in
-    let ((), tr) = trigger_event receiver (ReceiverReceivedMsg sender receiver secret payload) tr in
-    assert(event_triggered tr receiver (ReceiverReceivedMsg sender receiver secret payload));
+    let ((), tr) = trigger_event receiver (ReceiverReceivedMsg receiver secret payload) tr in
+    assert(event_triggered tr receiver (ReceiverReceivedMsg receiver secret payload));
     
     // This can be shown because the
     // `comm_layer_event_preds.send_conf`
     // predicate guarantees this label of `secret`
     // on the sender side.
-    assert(is_secret (join (principal_label sender) (principal_label receiver)) tr secret \/
+    assert(exists sender. is_secret (join (principal_label sender) (principal_label receiver)) tr secret \/
       is_publishable tr payload);
     let (state_id, tr) = new_session_id receiver tr in
     let ((), tr) = set_state receiver state_id (ReceiverState secret payload) tr in

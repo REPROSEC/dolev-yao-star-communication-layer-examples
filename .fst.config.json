@@ -13,6 +13,7 @@
     "src/single_conf_message",
     "src/single_auth_message",
     "src/single_conf_and_auth_message",
-    "src/login"
+    "src/login",
+    "src/single_message_protocol_crypto"
   ] 
 }

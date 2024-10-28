@@ -1,10 +1,10 @@
-module DY.Example.SingleConfMessage.Protocol.Total.Proof
+module DY.Example.SingleConfAuthMessage.Protocol.Total.Proof
 
 open Comparse
 open DY.Core
 open DY.Lib
-open DY.Example.SingleConfMessage.Protocol.Total
-open DY.Example.SingleConfMessage.Protocol.Stateful
+open DY.Example.SingleConfAuthMessage.Protocol.Total
+open DY.Example.SingleConfAuthMessage.Protocol.Stateful
 
 #set-options "--fuel 0 --ifuel 0 --z3cliopt 'smt.qi.eager_threshold=100'"
 
@@ -15,7 +15,7 @@ instance crypto_usages_protocol = default_crypto_usages
 
 val pkenc_pred_list_protocol: list (string & pkenc_crypto_predicate crypto_usages_protocol)
 let pkenc_pred_list_protocol = [
-  pkenc_crypto_predicates_communication_layer_and_tag
+  pkenc_crypto_predicates_communication_layer_and_tag;
 ]
 
 val sign_pred_list_protocol: list (string & sign_crypto_predicate crypto_usages_protocol)
@@ -75,6 +75,7 @@ let protocol_crypto_invariants_has_communication_layer_invariants =
   sign_pred_has_all_sign_preds ();
   ()
 
+
 (*** Proofs ***)
 
 val compute_message_proof:
@@ -83,6 +84,7 @@ val compute_message_proof:
   secret:bytes ->
   Lemma
   (requires
+    event_triggered tr sender (SenderSendMsg sender receiver secret) /\
     bytes_invariant tr secret /\
     is_knowable_by (join (principal_label sender) (principal_label receiver)) tr secret
   )
@@ -90,17 +92,16 @@ val compute_message_proof:
     is_knowable_by (join (principal_label sender) (principal_label receiver)) tr (compute_message secret)
   )
 let compute_message_proof tr sender receiver secret =
-  serialize_wf_lemma single_message (is_knowable_by (join (principal_label sender) (principal_label receiver)) tr) {secret;};
+  serialize_wf_lemma message (is_knowable_by (join (principal_label sender) (principal_label receiver)) tr) (Msg {secret;});
   ()
 
 val decode_message_proof:
   tr:trace ->
-  receiver:principal ->
+  sender:principal -> receiver:principal ->
   msg_bytes:bytes ->
   Lemma
   (requires
-    is_knowable_by (principal_label receiver) tr msg_bytes \/
-    is_publishable tr msg_bytes
+    is_knowable_by (principal_label receiver) tr msg_bytes
   )
   (ensures (
     match decode_message msg_bytes with
@@ -110,10 +111,10 @@ val decode_message_proof:
     | None -> True
   )
   )
-let decode_message_proof tr receiver msg_bytes =
+let decode_message_proof tr sender receiver msg_bytes =
   match decode_message msg_bytes with
   | Some msg -> (
-    parse_wf_lemma single_message (is_knowable_by (principal_label receiver) tr) msg_bytes;
+      parse_wf_lemma message (is_knowable_by (principal_label receiver) tr) msg_bytes;
     ()
   )
   | None -> ()

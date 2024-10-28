@@ -1,33 +1,31 @@
-module DY.Example.SingleAuthMessage.Protocol.Stateful.Proof
+module DY.Example.SingleConfAuthMessage.Protocol.Stateful.Proof
 
 open Comparse
 open DY.Core
 open DY.Lib
-open DY.Example.SingleAuthMessage.Protocol.Total
-open DY.Example.SingleAuthMessage.Protocol.Total.Proof
-open DY.Example.SingleAuthMessage.Protocol.Stateful
+open DY.Example.SingleConfAuthMessage.Protocol.Total
+open DY.Example.SingleConfAuthMessage.Protocol.Total.Proof
+open DY.Example.SingleConfAuthMessage.Protocol.Stateful
 
-#set-options "--fuel 0 --ifuel 0 --z3rlimit 25  --z3cliopt 'smt.qi.eager_threshold=100'"
+#set-options "--fuel 0 --ifuel 1 --z3rlimit 25  --z3cliopt 'smt.qi.eager_threshold=100'"
 
 (*** Trace invariants ***)
 
 (**** State Predicates ****)
 
-#push-options "--fuel 0 --ifuel 1"
 let state_predicate_protocol: local_state_predicate single_message_state = {
   pred = (fun tr prin state_id st ->
     match st with
-    | SenderState sender' secret -> (
+    | SenderState receiver secret -> (
       let sender = prin in
-      sender == sender' /\
-      event_triggered tr sender (SenderSendMsg sender secret) /\
-      is_publishable tr secret
+      event_triggered tr sender (SenderSendMsg sender receiver secret) /\
+      get_label secret == join (principal_label sender) (principal_label receiver) /\
+      is_knowable_by (join (principal_label sender) (principal_label receiver)) tr secret
     )
-    | ReceiverState sender secret payload -> (
+    | ReceiverState sender secret -> (
       let receiver = prin in
-      (exists sender. event_triggered tr receiver (ReceiverReceivedMsg sender receiver secret payload)) /\
-      is_publishable tr secret /\
-      is_publishable tr payload
+      event_triggered tr receiver (ReceiverReceivedMsg sender receiver secret) /\
+      is_knowable_by (principal_label receiver) tr secret
     )
   );
   pred_later = (fun tr1 tr2 sender state_id st -> ());
@@ -45,27 +43,35 @@ let all_sessions = [
 let event_predicate_protocol: event_predicate single_message_event =
   fun tr prin e ->
     match e with
-    | SenderSendMsg sender secret -> True
-    | ReceiverReceivedMsg sender receiver secret payload -> (
-      event_triggered tr receiver (CommAuthReceiveMsg sender receiver payload)
+    | SenderSendMsg sender receiver secret -> (
+      get_label secret == join (principal_label sender) (principal_label receiver)
     )
-#pop-options
-
-/// List of all local event predicates.
+    | ReceiverReceivedMsg sender receiver secret -> (
+      (exists payload. event_triggered tr receiver (CommConfAuthReceiveMsg sender receiver payload)) /\
+      (
+        event_triggered tr sender (SenderSendMsg sender receiver secret) \/ 
+        is_corrupt tr (principal_label sender)
+      )
+    )
 
 val comm_layer_event_preds: comm_higher_layer_event_preds
 let comm_layer_event_preds = {
   default_comm_higher_layer_event_preds with
-  send_auth = (fun sender payload tr -> 
-    exists secret.
-      event_triggered tr sender (SenderSendMsg sender secret) /\
-      decode_message payload == Some {secret}
-  )
+  send_conf_auth = (fun sender receiver payload tr -> (
+    match decode_message payload with
+    | None -> False
+    | Some single_msg -> (
+      event_triggered tr sender (SenderSendMsg sender receiver single_msg.secret)
+    )
+  ))
+
 }
+
+/// List of all local event predicates.
 
 let all_events = [
   event_predicate_communication_layer_and_tag comm_layer_event_preds;
-  (event_protocol_event.tag, compile_event_pred event_predicate_protocol)
+  (event_single_message_event.tag, compile_event_pred event_predicate_protocol)
 ]
 
 (**** Create the global trace invariants ****)
@@ -140,20 +146,16 @@ val send_message_proof:
   ))
   [SMTPat (trace_invariant tr); SMTPat (send_message comm_keys_ids sender receiver state_id tr)]
 let send_message_proof tr comm_keys_ids sender receiver state_id =
-  match send_message comm_keys_ids sender receiver state_id tr with
-  | (None, tr_out) -> ()
-  | (Some msg_id, tr_out) -> (
-    let (Some (SenderState sender' secret), tr) = get_state sender state_id tr in
-    assert(is_publishable tr secret);
-    assert(event_triggered tr sender (SenderSendMsg sender secret));
-    compute_message_proof tr sender receiver secret;
+  match get_state sender state_id tr with
+  | (Some (SenderState receiver secret), tr) -> (
+    compute_message_proof tr sender receiver secret;    
     let payload = compute_message secret in
-    send_authenticated_proof tr comm_layer_event_preds comm_keys_ids sender receiver payload;
-    let (Some msg_id, tr) = send_authenticated comm_keys_ids sender receiver payload tr in
-    assert(tr_out == tr);
+    send_confidential_authenticated_proof tr comm_layer_event_preds comm_keys_ids sender receiver payload;
     ()
   )
+  | _ -> ()
 
+//#push-options "--fuel 4 --ifuel 4 --z3rlimit 75"
 val receive_message_proof:
   tr:trace -> comm_keys_ids:communication_keys_sess_ids -> receiver:principal -> msg_id:timestamp ->
   Lemma
@@ -166,18 +168,20 @@ val receive_message_proof:
   ))
   [SMTPat (trace_invariant tr); SMTPat (receive_message comm_keys_ids receiver msg_id tr)]
 let receive_message_proof tr comm_keys_ids receiver msg_id =
-  receive_authenticated_proof tr comm_layer_event_preds comm_keys_ids receiver msg_id;
+  receive_confidential_authenticated_proof tr comm_layer_event_preds comm_keys_ids receiver msg_id;
   match receive_message comm_keys_ids receiver msg_id tr with
-  | (None, tr_out) -> ()
-  | (Some state_id, tr_out) -> (
-    let (Some {sender; receiver=receiver'; payload}, tr) = receive_authenticated comm_keys_ids receiver msg_id tr in
-    assert(is_publishable tr payload);
-    decode_message_proof tr sender receiver payload;
-    let Some {secret} = decode_message payload in
-    let ((), tr) = trigger_event receiver (ReceiverReceivedMsg sender receiver secret payload) tr in
-    assert(event_triggered tr receiver (ReceiverReceivedMsg sender receiver secret payload));
+  | (None, tr) -> ()
+  | (Some state_id, tr_out) -> (    
+    let (Some msg, tr) = receive_confidential_authenticated comm_keys_ids receiver msg_id tr in
+    decode_message_proof tr msg.sender receiver msg.payload;
+    let Some single_message = decode_message msg.payload in
+    let ((), tr) = trigger_event receiver (ReceiverReceivedMsg msg.sender receiver single_message.secret) tr in
+    //assert(event_triggered tr receiver (CommConfAuthReceiveMsg msg.sender receiver (compute_message single_message.secret)));
+    assert(event_triggered tr receiver (ReceiverReceivedMsg msg.sender receiver single_message.secret));
     let (state_id, tr) = new_session_id receiver tr in
-    let ((), tr) = set_state receiver state_id (ReceiverState sender secret payload) tr in
-    assert(tr_out == tr);
+    let ((), tr) = set_state receiver state_id (ReceiverState msg.sender single_message.secret) tr in
+    assert(is_knowable_by (principal_label receiver) tr single_message.secret);
+    assert(trace_invariant tr);
+    assert(tr == tr_out);
     ()
   )
