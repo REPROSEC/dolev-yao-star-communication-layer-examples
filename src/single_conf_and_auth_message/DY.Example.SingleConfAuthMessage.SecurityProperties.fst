@@ -22,7 +22,7 @@ val sender_authentication:
   )
   (ensures
     event_triggered tr sender (SenderSendMsg sender receiver secret) \/
-    is_corrupt tr (principal_label sender)
+    is_corrupt tr (long_term_key_label sender)
   )
 let sender_authentication tr i sender receiver secret = ()
 
@@ -55,7 +55,9 @@ val secret_secrecy_receiver:
     event_triggered tr receiver (ReceiverReceivedMsg sender receiver secret)
   )
   (ensures
-    is_corrupt tr (principal_label sender) \/ is_corrupt tr (principal_label receiver)
+    is_corrupt tr (principal_label sender) \/
+    is_corrupt tr (principal_label receiver) \/
+    is_corrupt tr (long_term_key_label sender)
   )
 let secret_secrecy_receiver tr sender receiver secret =
   attacker_only_knows_publishable_values tr secret;

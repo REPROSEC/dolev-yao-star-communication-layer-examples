@@ -19,7 +19,7 @@ let state_predicate_protocol: local_state_predicate single_message_state = {
     | SenderState receiver secret -> (
       let sender = prin in
       event_triggered tr sender (SenderSendMsg sender receiver secret) /\
-      get_label secret == join (principal_label sender) (principal_label receiver) /\
+      get_label tr secret == join (principal_label sender) (principal_label receiver) /\
       is_knowable_by (join (principal_label sender) (principal_label receiver)) tr secret
     )
     | ReceiverState sender secret -> (
@@ -35,7 +35,7 @@ let state_predicate_protocol: local_state_predicate single_message_state = {
 let all_sessions = [
   pki_tag_and_invariant;
   private_keys_tag_and_invariant;
-  (local_state_single_message_state.tag, local_state_predicate_to_local_bytes_state_predicate state_predicate_protocol);
+  (|local_state_single_message_state.tag, local_state_predicate_to_local_bytes_state_predicate state_predicate_protocol|);
 ]
 
 (**** Event Predicates ****)
@@ -44,13 +44,13 @@ let event_predicate_protocol: event_predicate single_message_event =
   fun tr prin e ->
     match e with
     | SenderSendMsg sender receiver secret -> (
-      get_label secret == join (principal_label sender) (principal_label receiver)
+      is_secret (join (principal_label sender) (principal_label receiver)) tr secret
     )
     | ReceiverReceivedMsg sender receiver secret -> (
       (exists payload. event_triggered tr receiver (CommConfAuthReceiveMsg sender receiver payload)) /\
       (
         event_triggered tr sender (SenderSendMsg sender receiver secret) \/ 
-        is_corrupt tr (principal_label sender)
+        is_corrupt tr (long_term_key_label sender)
       )
     )
 
@@ -76,8 +76,8 @@ let all_events = [
 
 (**** Create the global trace invariants ****)
 
-let trace_invariants_protocol: trace_invariants (crypto_invariants_protocol) = {
-  state_pred = mk_state_pred crypto_invariants_protocol all_sessions;
+let trace_invariants_protocol: trace_invariants = {
+  state_pred = mk_state_pred all_sessions;
   event_pred = mk_event_pred all_events;
 }
 
@@ -88,35 +88,35 @@ instance protocol_invariants_protocol: protocol_invariants = {
 
 /// Lemmas that the global state predicate contains all the local ones
 
-val all_sessions_has_all_sessions: unit -> Lemma (norm [delta_only [`%all_sessions; `%for_allP]; iota; zeta] (for_allP (has_local_bytes_state_predicate protocol_invariants_protocol) all_sessions))
+val all_sessions_has_all_sessions: unit -> Lemma (norm [delta_only [`%all_sessions; `%for_allP]; iota; zeta] (for_allP has_local_bytes_state_predicate all_sessions))
 let all_sessions_has_all_sessions () =
-  assert_norm(List.Tot.no_repeats_p (List.Tot.map fst (all_sessions)));
-  mk_state_pred_correct protocol_invariants_protocol all_sessions;
-  norm_spec [delta_only [`%all_sessions; `%for_allP]; iota; zeta] (for_allP (has_local_bytes_state_predicate protocol_invariants_protocol) all_sessions)
+  assert_norm(List.Tot.no_repeats_p (List.Tot.map dfst (all_sessions)));
+  mk_state_pred_correct all_sessions;
+  norm_spec [delta_only [`%all_sessions; `%for_allP]; iota; zeta] (for_allP has_local_bytes_state_predicate all_sessions)
 
-val protocol_invariants_protocol_has_pki_invariant: squash (has_pki_invariant protocol_invariants_protocol)
+val protocol_invariants_protocol_has_pki_invariant: squash has_pki_invariant
 let protocol_invariants_protocol_has_pki_invariant = all_sessions_has_all_sessions ()
 
-val protocol_invariants_protocol_has_private_keys_invariant: squash (has_private_keys_invariant protocol_invariants_protocol)
+val protocol_invariants_protocol_has_private_keys_invariant: squash has_private_keys_invariant
 let protocol_invariants_protocol_has_private_keys_invariant = all_sessions_has_all_sessions ()
 
-val protocol_invariants_protocol_has_nsl_session_invariant: squash (has_local_state_predicate protocol_invariants_protocol state_predicate_protocol)
+val protocol_invariants_protocol_has_nsl_session_invariant: squash (has_local_state_predicate state_predicate_protocol)
 let protocol_invariants_protocol_has_nsl_session_invariant = all_sessions_has_all_sessions ()
 
 /// Lemmas that the global event predicate contains all the local ones
 
-val all_events_has_all_events: unit -> Lemma (norm [delta_only [`%all_events; `%for_allP]; iota; zeta] (for_allP (has_compiled_event_pred protocol_invariants_protocol) all_events))
+val all_events_has_all_events: unit -> Lemma (norm [delta_only [`%all_events; `%for_allP]; iota; zeta] (for_allP has_compiled_event_pred all_events))
 let all_events_has_all_events () =
   assert_norm(List.Tot.no_repeats_p (List.Tot.map fst (all_events)));
-  mk_event_pred_correct protocol_invariants_protocol all_events;
-  norm_spec [delta_only [`%all_events; `%for_allP]; iota; zeta] (for_allP (has_compiled_event_pred protocol_invariants_protocol) all_events);
+  mk_event_pred_correct all_events;
+  norm_spec [delta_only [`%all_events; `%for_allP]; iota; zeta] (for_allP has_compiled_event_pred all_events);
   let dumb_lemma (x:prop) (y:prop): Lemma (requires x /\ x == y) (ensures y) = () in
-  dumb_lemma (for_allP (has_compiled_event_pred protocol_invariants_protocol) all_events) (norm [delta_only [`%all_events; `%for_allP]; iota; zeta] (for_allP (has_compiled_event_pred protocol_invariants_protocol) all_events))
+  dumb_lemma (for_allP has_compiled_event_pred all_events) (norm [delta_only [`%all_events; `%for_allP]; iota; zeta] (for_allP has_compiled_event_pred all_events))
 
-val protocol_invariants_has_communication_layer_event_invariants: squash (has_event_pred protocol_invariants_protocol (event_predicate_communication_layer comm_layer_event_preds))
+val protocol_invariants_has_communication_layer_event_invariants: squash (has_event_pred (event_predicate_communication_layer comm_layer_event_preds))
 let protocol_invariants_has_communication_layer_event_invariants = all_events_has_all_events ()
 
-val protocol_invariants_protocol_has_protocol_event_invariant: squash (has_event_pred protocol_invariants_protocol event_predicate_protocol)
+val protocol_invariants_protocol_has_protocol_event_invariant: squash (has_event_pred event_predicate_protocol)
 let protocol_invariants_protocol_has_protocol_event_invariant = all_events_has_all_events ()
 
 (*** Proofs ***)
@@ -155,7 +155,6 @@ let send_message_proof tr comm_keys_ids sender receiver state_id =
   )
   | _ -> ()
 
-//#push-options "--fuel 4 --ifuel 4 --z3rlimit 75"
 val receive_message_proof:
   tr:trace -> comm_keys_ids:communication_keys_sess_ids -> receiver:principal -> msg_id:timestamp ->
   Lemma
@@ -171,16 +170,15 @@ let receive_message_proof tr comm_keys_ids receiver msg_id =
   receive_confidential_authenticated_proof tr comm_layer_event_preds comm_keys_ids receiver msg_id;
   match receive_message comm_keys_ids receiver msg_id tr with
   | (None, tr) -> ()
-  | (Some state_id, tr_out) -> (    
+  | (Some state_id, tr_out) -> (
     let (Some msg, tr) = receive_confidential_authenticated comm_keys_ids receiver msg_id tr in
     decode_message_proof tr msg.sender receiver msg.payload;
-    let Some single_message = decode_message msg.payload in
-    let ((), tr) = trigger_event receiver (ReceiverReceivedMsg msg.sender receiver single_message.secret) tr in
-    //assert(event_triggered tr receiver (CommConfAuthReceiveMsg msg.sender receiver (compute_message single_message.secret)));
-    assert(event_triggered tr receiver (ReceiverReceivedMsg msg.sender receiver single_message.secret));
+    let Some single_msg = decode_message msg.payload in
+    let ((), tr) = trigger_event receiver (ReceiverReceivedMsg msg.sender receiver single_msg.secret) tr in
+    assert(event_triggered tr receiver (ReceiverReceivedMsg msg.sender receiver single_msg.secret));
     let (state_id, tr) = new_session_id receiver tr in
-    let ((), tr) = set_state receiver state_id (ReceiverState msg.sender single_message.secret) tr in
-    assert(is_knowable_by (principal_label receiver) tr single_message.secret);
+    let ((), tr) = set_state receiver state_id (ReceiverState msg.sender single_msg.secret) tr in
+    assert(is_knowable_by (principal_label receiver) tr single_msg.secret);
     assert(trace_invariant tr);
     assert(tr == tr_out);
     ()

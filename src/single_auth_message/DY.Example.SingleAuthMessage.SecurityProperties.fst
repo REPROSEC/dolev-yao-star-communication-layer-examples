@@ -23,7 +23,7 @@ val sender_authentication:
   )
   (ensures
     event_triggered tr sender (SenderSendMsg sender secret) \/
-    is_corrupt tr (principal_label sender)
+    is_corrupt tr (long_term_key_label sender)
   )
 let sender_authentication tr i sender receiver secret = ()
 
@@ -41,6 +41,6 @@ val sender_authentication':
   )
   (ensures
     event_triggered (prefix tr i) sender (CommAuthSendMsg sender payload) \/
-    is_corrupt (prefix tr i) (principal_label sender)
+    is_corrupt (prefix tr i) (long_term_key_label sender)
   )
 let sender_authentication' tr i sender receiver payload = ()
