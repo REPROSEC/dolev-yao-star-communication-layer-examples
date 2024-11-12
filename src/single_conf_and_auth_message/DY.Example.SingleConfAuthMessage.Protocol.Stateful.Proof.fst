@@ -179,6 +179,9 @@ let receive_message_proof tr comm_keys_ids receiver msg_id =
     let (state_id, tr) = new_session_id receiver tr in
     let ((), tr) = set_state receiver state_id (ReceiverState msg.sender single_msg.secret) tr in
     assert(is_knowable_by (principal_label receiver) tr single_msg.secret);
+    assert(is_secret (join (principal_label msg.sender) (principal_label receiver)) tr single_msg.secret \/
+            is_corrupt tr (long_term_key_label msg.sender)
+    );
     assert(trace_invariant tr);
     assert(tr == tr_out);
     ()

@@ -9,19 +9,19 @@ open DY.Example.SingleConfAuthMessage.Protocol.Stateful
 let debug () : traceful (option unit) =
   let _ = IO.debug_print_string "************* Trace *************\n" in
   (*** Initialize protocol run ***)
-  let client = "client" in
-  let server = "server" in
+  let sender = "sender" in
+  let receiver = "receiver" in
 
-  let*? client_comm_keys_sess_ids, server_comm_keys_sess_ids = initialize_communication client server in
+  let*? sender_comm_keys_sess_ids, receiver_comm_keys_sess_ids = initialize_communication sender receiver in
 
-  // Client prepare message
-  let* client_session_id = prepare_message client server in
+  // sender prepare message
+  let* sender_session_id = prepare_message sender receiver in
 
-  // Client send message
-  let*? msg_id = send_message client_comm_keys_sess_ids client server client_session_id in
+  // sender send message
+  let*? msg_id = send_message sender_comm_keys_sess_ids sender receiver sender_session_id in
 
-  // Server receive message
-  let*? server_session_id = receive_message server_comm_keys_sess_ids server msg_id in
+  // receiver receive message
+  let*? receiver_session_id = receive_message receiver_comm_keys_sess_ids receiver msg_id in
 
   let* tr = get_trace in
   let _ = IO.debug_print_string (

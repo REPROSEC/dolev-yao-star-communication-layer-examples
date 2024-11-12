@@ -1,5 +1,6 @@
 DY_HOME ?= ../../..
-EXAMPLES = single_conf_message single_auth_message
+
+EXAMPLES = single_auth_message
 EXAMPLE_DIRS = $(addprefix ../, $(EXAMPLES))
 include $(DY_HOME)/Makefile
 
