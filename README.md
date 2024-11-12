@@ -12,3 +12,4 @@ implemented:
 - Minimal example for the
   [authenticated](src/single_auth_message/)
   send and receive functions
+- Minimal example for the [confidential and authenticated](src/single_conf_and_auth_message/) send and receiver functions
