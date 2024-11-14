@@ -51,10 +51,11 @@ let all_sessions = [
 // This is just a demonstration how to use the `comm_higher_layer_event_preds`.
 // If you don't need them you can just initialize them with
 // `default_comm_higher_layer_event_preds`.
+#push-options "--fuel 0 --ifuel 2"
 val comm_layer_event_preds: comm_higher_layer_event_preds
 let comm_layer_event_preds = {
   default_comm_higher_layer_event_preds with
-  send_conf = (fun sender receiver payload tr -> 
+  send_conf = (fun tr sender receiver payload -> 
     match decode_message payload with
     | None -> False
     | Some {secret} -> (
@@ -74,6 +75,7 @@ let comm_layer_event_preds = {
     )
   )
 }
+#pop-options
 
 let all_events = [
   event_predicate_communication_layer_and_tag comm_layer_event_preds;

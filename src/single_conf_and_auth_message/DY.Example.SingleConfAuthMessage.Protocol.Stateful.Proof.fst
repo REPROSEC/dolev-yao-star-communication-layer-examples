@@ -57,7 +57,7 @@ let event_predicate_protocol: event_predicate single_message_event =
 val comm_layer_event_preds: comm_higher_layer_event_preds
 let comm_layer_event_preds = {
   default_comm_higher_layer_event_preds with
-  send_conf_auth = (fun sender receiver payload tr -> (
+  send_conf_auth = (fun tr sender receiver payload -> (
     match decode_message payload with
     | None -> False
     | Some single_msg -> (

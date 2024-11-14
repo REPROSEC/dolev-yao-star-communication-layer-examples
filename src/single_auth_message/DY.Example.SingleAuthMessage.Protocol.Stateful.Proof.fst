@@ -56,7 +56,7 @@ let event_predicate_protocol: event_predicate single_message_event =
 val comm_layer_event_preds: comm_higher_layer_event_preds
 let comm_layer_event_preds = {
   default_comm_higher_layer_event_preds with
-  send_auth = (fun sender payload tr -> 
+  send_auth = (fun tr sender payload -> 
     exists secret.
       event_triggered tr sender (SenderSendMsg sender secret) /\
       decode_message payload == Some {secret}
