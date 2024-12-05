@@ -108,8 +108,8 @@ let protocol_invariants_protocol_has_pki_invariant = all_sessions_has_all_sessio
 val protocol_invariants_protocol_has_private_keys_invariant: squash has_private_keys_invariant
 let protocol_invariants_protocol_has_private_keys_invariant = all_sessions_has_all_sessions ()
 
-val protocol_invariants_protocol_has_nsl_session_invariant: squash (has_local_state_predicate state_predicate_protocol)
-let protocol_invariants_protocol_has_nsl_session_invariant = all_sessions_has_all_sessions ()
+val protocol_invariants_protocol_has_protocol_session_invariant: squash (has_local_state_predicate state_predicate_protocol)
+let protocol_invariants_protocol_has_protocol_session_invariant = all_sessions_has_all_sessions ()
 
 /// Lemmas that the global event predicate contains all the local ones
 
@@ -124,8 +124,8 @@ let all_events_has_all_events () =
 val protocol_invariants_has_communication_layer_event_invariants: squash (has_event_pred (event_predicate_communication_layer comm_layer_event_preds))
 let protocol_invariants_has_communication_layer_event_invariants = all_events_has_all_events ()
 
-val protocol_invariants_protocol_has_nsl_event_invariant: squash (has_event_pred event_predicate_protocol)
-let protocol_invariants_protocol_has_nsl_event_invariant = all_events_has_all_events ()
+val protocol_invariants_protocol_has_protocol_event_invariant: squash (has_event_pred event_predicate_protocol)
+let protocol_invariants_protocol_has_protocol_event_invariant = all_events_has_all_events ()
 
 (*** Proofs ***)
 
@@ -164,7 +164,7 @@ let send_message_proof tr comm_keys_ids sender receiver state_id =
     let payload = compute_message secret in
     
     let ((), tr) = trigger_event sender (SenderSendMsg sender receiver secret) tr in
-    assert(has_communication_layer_invariants);
+    assert(has_communication_layer_crypto_predicates);
     assert(has_communication_layer_event_predicates comm_layer_event_preds);
     assert(is_secret (join (principal_label sender) (principal_label receiver)) tr secret);
     send_confidential_proof tr comm_layer_event_preds comm_keys_ids sender receiver payload;

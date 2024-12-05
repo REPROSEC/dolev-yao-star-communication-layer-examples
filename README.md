@@ -13,3 +13,4 @@ implemented:
   [authenticated](src/single_auth_message/)
   send and receive functions
 - Minimal example for the [confidential and authenticated](src/single_conf_and_auth_message/) send and receiver functions
+- Minimal example for the [request-response pair](src/request_response/) send and receive functions

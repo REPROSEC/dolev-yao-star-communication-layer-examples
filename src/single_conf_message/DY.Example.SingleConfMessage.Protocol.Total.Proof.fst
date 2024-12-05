@@ -32,12 +32,12 @@ let crypto_predicates_protocol = {
 
   sign_pred = mk_sign_predicate sign_pred_list_protocol;
 }
+#pop-options
 
 instance crypto_invariants_protocol: crypto_invariants = {
   usages = crypto_usages_protocol;
   preds = crypto_predicates_protocol;
 }
-#pop-options
 
 #push-options "--ifuel 0 --fuel 1"
 val pkenc_pred_has_all_pkenc_preds: 
@@ -69,8 +69,8 @@ let sign_pred_has_all_sign_preds () =
   ()
 #pop-options
 
-val protocol_crypto_invariants_has_communication_layer_invariants: squash has_communication_layer_invariants
-let protocol_crypto_invariants_has_communication_layer_invariants =
+val protocol_crypto_invariants_has_communication_layer_crypto_predicates: squash has_communication_layer_crypto_predicates
+let protocol_crypto_invariants_has_communication_layer_crypto_predicates =
   pkenc_pred_has_all_pkenc_preds ();
   sign_pred_has_all_sign_preds ();
   ()
@@ -83,7 +83,6 @@ val compute_message_proof:
   secret:bytes ->
   Lemma
   (requires
-    bytes_invariant tr secret /\
     is_knowable_by (join (principal_label sender) (principal_label receiver)) tr secret
   )
   (ensures

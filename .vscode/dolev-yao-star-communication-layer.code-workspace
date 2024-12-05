@@ -7,5 +7,10 @@
 			"path": ".."
 		}
 	],
-	"settings": {}
+	"settings": {
+		"ocaml.sandbox": {
+			"kind": "opam",
+			"switch": "fstar"
+		}
+	}
 }

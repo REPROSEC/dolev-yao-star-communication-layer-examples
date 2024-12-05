@@ -69,8 +69,8 @@ let sign_pred_has_all_sign_preds () =
   ()
 #pop-options
 
-val protocol_crypto_invariants_has_communication_layer_invariants: squash has_communication_layer_invariants
-let protocol_crypto_invariants_has_communication_layer_invariants =
+val protocol_crypto_invariants_has_communication_layer_crypto_predicates: squash has_communication_layer_crypto_predicates
+let protocol_crypto_invariants_has_communication_layer_crypto_predicates =
   pkenc_pred_has_all_pkenc_preds ();
   sign_pred_has_all_sign_preds ();
   ()
