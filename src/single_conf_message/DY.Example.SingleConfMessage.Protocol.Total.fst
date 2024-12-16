@@ -18,16 +18,3 @@ type single_message = {
 
 instance parseable_serializeable_bytes_message: parseable_serializeable bytes single_message
   = mk_parseable_serializeable ps_single_message
-
-
-(*** Protocol ***)
-
-val compute_message: bytes -> bytes
-let compute_message secret =
-  let msg = {secret;} in
-  serialize single_message msg
-
-val decode_message: bytes -> option single_message
-let decode_message msg_bytes =
-  let? msg = parse single_message msg_bytes in
-  Some msg
