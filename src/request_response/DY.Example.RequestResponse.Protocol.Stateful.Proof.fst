@@ -134,27 +134,13 @@ val client_send_request_proof:
   ))
   [SMTPat (trace_invariant tr); SMTPat (client_send_request comm_keys_ids client server tr)]
 let client_send_request_proof tr comm_keys_ids client server =
-  match client_send_request comm_keys_ids client server tr with
-  | (None, tr_out) -> (
-    let (nonce, tr) = mk_rand NoUsage (join (principal_label client) (principal_label server)) 32 tr in
-    let req_msg:message_t =  Request { client; nonce } in
-    send_request_proof #protocol_invariants_protocol #message_t tr comm_keys_ids comm_layer_event_preds client server req_msg;
-    ()
-  )
-  | (Some (sid, msg_id), tr_out) -> (
-    let (nonce, tr) = mk_rand NoUsage (join (principal_label client) (principal_label server)) 32 tr in
-    let req_msg:message_t = Request { client; nonce } in
-    send_request_proof tr comm_keys_ids comm_layer_event_preds client server req_msg;
-    let (Some (req_bytes, cmeta_data), tr) = send_request comm_keys_ids client server req_msg tr in
-    let (sid, tr) = new_session_id client tr in
-    let ((), tr) = set_state client sid (ClientSendRequest { server; cmeta_data; nonce } <: protocol_state) tr in
-    assert(tr == tr_out);
-    assert(trace_invariant tr_out);
-    ()
-  )
+  let (nonce, tr) = mk_rand NoUsage (join (principal_label client) (principal_label server)) 32 tr in
+  let req_msg:message_t = Request { client; nonce } in
+  send_request_proof tr comm_keys_ids comm_layer_event_preds client server req_msg;
+  ()
 #pop-options
 
-#push-options "--z3rlimit 15"
+#push-options "--z3rlimit 20"
 val server_receive_request_send_response_proof:
   tr:trace ->
   comm_keys_ids:communication_keys_sess_ids ->
@@ -176,16 +162,17 @@ let server_receive_request_send_response_proof tr comm_keys_ids server msg_id =
   | (Some (msg, cmeta_data), tr) -> (
     match msg with
     | Request req -> (
+      // Demonstration how `comm_reqres_higher_layer_event_preds` can be used
       assert(is_secret (join (principal_label req.client) (principal_label server)) tr req.nonce \/
       is_publishable tr req.nonce);
-      assert(is_knowable_by (join (principal_label req.client) (principal_label server)) tr req.nonce);
       
+      // If we send the message before the state is set we can probably omit
+      // these lines
       let (sid, tr) = new_session_id server tr in
       let ((), tr) = set_state server sid (ServerReceiveRequest { client=req.client; nonce=req.nonce } <: protocol_state) tr in
       assert(trace_invariant tr);
 
       let payload = (Response {b=req.nonce}) in
-      assert(is_well_formed message_t (is_knowable_by (get_label #default_crypto_usages tr cmeta_data.key) tr) payload);
       send_response_proof #protocol_invariants_protocol #message_t tr comm_keys_ids comm_layer_event_preds server cmeta_data payload;
       ()
     )
