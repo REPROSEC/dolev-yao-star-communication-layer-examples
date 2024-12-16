@@ -12,7 +12,6 @@ open DY.Example.SingleAuthMessage.Protocol.Stateful.Proof
 
 // For authenticated messages we can prove on the receiver side that either the
 // sender triggered a send event or the sender is corrupt.
-#push-options "--fuel 4 --ifuel 4 --z3rlimit 50"
 val sender_authentication:
   tr:trace -> i:timestamp ->
   sender:principal -> receiver:principal ->

@@ -154,7 +154,7 @@ let client_send_request_proof tr comm_keys_ids client server =
   )
 #pop-options
 
-#push-options "--z3rlimit 20"
+#push-options "--z3rlimit 15"
 val server_receive_request_send_response_proof:
   tr:trace ->
   comm_keys_ids:communication_keys_sess_ids ->
@@ -180,6 +180,10 @@ let server_receive_request_send_response_proof tr comm_keys_ids server msg_id =
       is_publishable tr req.nonce);
       assert(is_knowable_by (join (principal_label req.client) (principal_label server)) tr req.nonce);
       
+      let (sid, tr) = new_session_id server tr in
+      let ((), tr) = set_state server sid (ServerReceiveRequest { client=req.client; nonce=req.nonce } <: protocol_state) tr in
+      assert(trace_invariant tr);
+
       let payload = (Response {b=req.nonce}) in
       assert(is_well_formed message_t (is_knowable_by (get_label #default_crypto_usages tr cmeta_data.key) tr) payload);
       send_response_proof #protocol_invariants_protocol #message_t tr comm_keys_ids comm_layer_event_preds server cmeta_data payload;

@@ -9,7 +9,7 @@ open DY.Example.SingleAuthMessage.Protocol.Total
 
 [@@with_bytes bytes]
 type single_message_state =
-  | SenderState: sender:principal -> msg:single_message -> single_message_state
+  | SenderState: msg:single_message -> single_message_state
   | ReceiverState: sender:principal -> msg:single_message -> single_message_state
 
 %splice [ps_single_message_state] (gen_parser (`single_message_state))
@@ -44,16 +44,16 @@ val prepare_message: principal -> principal -> traceful state_id
 let prepare_message sender receiver =
   let* secret = mk_rand NoUsage public 32 in
   let msg = {secret} in
+  trigger_event sender (SenderSendMsg sender msg);*
   let* state_id = new_session_id sender in
-  set_state sender state_id (SenderState sender msg <: single_message_state);*
+  set_state sender state_id (SenderState msg <: single_message_state);*
   return state_id
 
 val send_message: communication_keys_sess_ids -> principal -> principal -> state_id -> traceful (option timestamp)
 let send_message comm_keys_ids sender receiver state_id =
   let*? st:single_message_state = get_state sender state_id in
   match st with
-  | SenderState sender msg -> (
-    trigger_event sender (SenderSendMsg sender msg);*
+  | SenderState msg -> (
     let*? msg_id = send_authenticated #single_message comm_keys_ids sender receiver msg in
     return (Some msg_id)
   )

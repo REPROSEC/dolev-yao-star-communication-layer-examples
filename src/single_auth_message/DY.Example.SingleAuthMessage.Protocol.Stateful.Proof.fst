@@ -17,9 +17,8 @@ open DY.Example.SingleAuthMessage.Protocol.Stateful
 let state_predicate_protocol: local_state_predicate single_message_state = {
   pred = (fun tr prin state_id st ->
     match st with
-    | SenderState sender' msg -> (
+    | SenderState msg -> (
       let sender = prin in
-      sender == sender' /\
       event_triggered tr sender (SenderSendMsg sender msg) /\
       is_publishable tr msg.secret
     )
@@ -142,7 +141,7 @@ let send_message_proof tr comm_keys_ids sender receiver state_id =
   match send_message comm_keys_ids sender receiver state_id tr with
   | (None, tr_out) -> ()
   | (Some msg_id, tr_out) -> (
-    let (Some (SenderState sender' msg), tr) = get_state sender state_id tr in
+    let (Some (SenderState msg), tr) = get_state sender state_id tr in
     assert(is_publishable tr msg.secret);
     assert(event_triggered tr sender (SenderSendMsg sender msg));
     send_authenticated_proof tr comm_layer_event_preds comm_keys_ids sender receiver msg;
