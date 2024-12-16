@@ -13,9 +13,9 @@ open DY.Example.SingleConfMessage.Protocol.Stateful
 val crypto_usages_protocol: crypto_usages
 instance crypto_usages_protocol = default_crypto_usages
 
-val pkenc_pred_list_protocol: list (string & pkenc_crypto_predicate)
-let pkenc_pred_list_protocol = [
-  pkenc_crypto_predicates_communication_layer_and_tag
+val pke_pred_list_protocol: list (string & pke_crypto_predicate)
+let pke_pred_list_protocol = [
+  pke_crypto_predicates_communication_layer_and_tag
 ]
 
 val sign_pred_list_protocol: list (string & sign_crypto_predicate)
@@ -28,7 +28,7 @@ val crypto_predicates_protocol: crypto_predicates
 let crypto_predicates_protocol = {
   default_crypto_predicates with
 
-  pkenc_pred = mk_pkenc_predicate pkenc_pred_list_protocol;
+  pke_pred = mk_pke_predicate pke_pred_list_protocol;
 
   sign_pred = mk_sign_predicate sign_pred_list_protocol;
 }
@@ -40,18 +40,18 @@ instance crypto_invariants_protocol: crypto_invariants = {
 }
 
 #push-options "--ifuel 0 --fuel 1"
-val pkenc_pred_has_all_pkenc_preds: 
+val pke_pred_has_all_pke_preds: 
   unit ->
   Lemma
   (ensures
-    norm [delta_only [`%pkenc_pred_list_protocol; `%for_allP]; iota; zeta] (
-      for_allP has_pkenc_predicate pkenc_pred_list_protocol
+    norm [delta_only [`%pke_pred_list_protocol; `%for_allP]; iota; zeta] (
+      for_allP has_pke_predicate pke_pred_list_protocol
     )
   )
-let pkenc_pred_has_all_pkenc_preds () =
-  assert_norm(List.Tot.no_repeats_p (List.Tot.map fst (pkenc_pred_list_protocol)));
-  mk_pkenc_predicate_correct pkenc_pred_list_protocol;
-  norm_spec [delta_only [`%pkenc_pred_list_protocol; `%for_allP]; iota; zeta] (for_allP has_pkenc_predicate pkenc_pred_list_protocol);
+let pke_pred_has_all_pke_preds () =
+  assert_norm(List.Tot.no_repeats_p (List.Tot.map fst (pke_pred_list_protocol)));
+  mk_pke_predicate_correct pke_pred_list_protocol;
+  norm_spec [delta_only [`%pke_pred_list_protocol; `%for_allP]; iota; zeta] (for_allP has_pke_predicate pke_pred_list_protocol);
   ()
 
 val sign_pred_has_all_sign_preds:
@@ -71,7 +71,7 @@ let sign_pred_has_all_sign_preds () =
 
 val protocol_crypto_invariants_has_communication_layer_crypto_predicates: squash has_communication_layer_crypto_predicates
 let protocol_crypto_invariants_has_communication_layer_crypto_predicates =
-  pkenc_pred_has_all_pkenc_preds ();
+  pke_pred_has_all_pke_preds ();
   sign_pred_has_all_sign_preds ();
   ()
 

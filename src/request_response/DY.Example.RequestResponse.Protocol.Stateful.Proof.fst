@@ -49,13 +49,15 @@ let all_sessions = [
 (*** Event Predicates ***)
 
 #push-options "--ifuel 2"
-val comm_layer_event_preds: comm_reqres_higher_layer_event_preds
+val comm_layer_event_preds: comm_reqres_higher_layer_event_preds message_t
 let comm_layer_event_preds = {
-  default_comm_reqres_higher_layer_event_preds with
-  send_request = (fun tr client server payload key_label ->
-    match decode_message payload with
-    | None -> False
-    | Some {client; nonce} -> is_secret (join (principal_label client) (principal_label server)) tr nonce
+  default_comm_reqres_higher_layer_event_preds message_t with
+  send_request = (fun tr client server (payload:message_t) key_label ->
+    match payload with
+    | Request {client; nonce} -> (
+      is_secret (join (principal_label client) (principal_label server)) tr nonce
+    )
+    | Response {b} -> True
   );
   send_request_later = (fun tr1 tr2 client server payload key_label -> ())
 }
@@ -135,17 +137,15 @@ let client_send_request_proof tr comm_keys_ids client server =
   match client_send_request comm_keys_ids client server tr with
   | (None, tr_out) -> (
     let (nonce, tr) = mk_rand NoUsage (join (principal_label client) (principal_label server)) 32 tr in
-    compute_message_proof tr client server nonce;
-    let req_msg_bytes = compute_message client nonce in
-    send_request_proof tr comm_keys_ids comm_layer_event_preds client server req_msg_bytes;
+    let req_msg:message_t =  Request { client; nonce } in
+    send_request_proof #protocol_invariants_protocol #message_t tr comm_keys_ids comm_layer_event_preds client server req_msg;
     ()
   )
   | (Some (sid, msg_id), tr_out) -> (
     let (nonce, tr) = mk_rand NoUsage (join (principal_label client) (principal_label server)) 32 tr in
-    compute_message_proof tr client server nonce;
-    let req_msg_bytes = compute_message client nonce in
-    send_request_proof tr comm_keys_ids comm_layer_event_preds client server req_msg_bytes;
-    let (Some (req_bytes, cmeta_data), tr) = send_request comm_keys_ids client server req_msg_bytes tr in
+    let req_msg:message_t = Request { client; nonce } in
+    send_request_proof tr comm_keys_ids comm_layer_event_preds client server req_msg;
+    let (Some (req_bytes, cmeta_data), tr) = send_request comm_keys_ids client server req_msg tr in
     let (sid, tr) = new_session_id client tr in
     let ((), tr) = set_state client sid (ClientSendRequest { server; cmeta_data; nonce } <: protocol_state) tr in
     assert(tr == tr_out);
@@ -154,7 +154,7 @@ let client_send_request_proof tr comm_keys_ids client server =
   )
 #pop-options
 
-#push-options "--ifuel 2 --z3rlimit 20"
+#push-options "--z3rlimit 20"
 val server_receive_request_send_response_proof:
   tr:trace ->
   comm_keys_ids:communication_keys_sess_ids ->
@@ -170,39 +170,22 @@ val server_receive_request_send_response_proof:
   ))
   [SMTPat (trace_invariant tr); SMTPat (server_receive_request_send_response comm_keys_ids server msg_id tr)]
 let server_receive_request_send_response_proof tr comm_keys_ids server msg_id =
-  receive_request_proof tr comm_keys_ids comm_layer_event_preds server msg_id;
-  match server_receive_request_send_response comm_keys_ids server msg_id tr with
-  | (None, tr_out) -> (
-    match receive_request comm_keys_ids server msg_id tr with
-    | (None, tr) -> ()
-    | (Some (req_bytes, cmeta_data), tr) -> (
-      decode_message_proof tr server req_bytes (get_response_label tr cmeta_data);
-
-      FStar.Classical.move_requires (parse_wf_lemma request (is_publishable tr)) req_bytes;
+  receive_request_proof #protocol_invariants_protocol #message_t tr comm_keys_ids comm_layer_event_preds server msg_id;
+  match receive_request #message_t comm_keys_ids server msg_id tr with
+  | (None, tr) -> ()
+  | (Some (msg, cmeta_data), tr) -> (
+    match msg with
+    | Request req -> (
+      assert(is_secret (join (principal_label req.client) (principal_label server)) tr req.nonce \/
+      is_publishable tr req.nonce);
+      assert(is_knowable_by (join (principal_label req.client) (principal_label server)) tr req.nonce);
+      
+      let payload = (Response {b=req.nonce}) in
+      assert(is_well_formed message_t (is_knowable_by (get_label #default_crypto_usages tr cmeta_data.key) tr) payload);
+      send_response_proof #protocol_invariants_protocol #message_t tr comm_keys_ids comm_layer_event_preds server cmeta_data payload;
       ()
     )
-  )
-  | (Some msg_id', tr_out) -> (
-    let (Some (req_bytes, cmeta_data), tr) = receive_request comm_keys_ids server msg_id tr in
-    
-    decode_message_proof tr server req_bytes (get_response_label tr cmeta_data);
-    let Some req:option request = decode_message req_bytes in
-
-    assert(is_secret (join (principal_label req.client) (principal_label server)) tr req.nonce \/
-      is_publishable tr req_bytes);
-    FStar.Classical.move_requires (parse_wf_lemma request (is_publishable tr)) req_bytes;
-    assert(is_knowable_by (join (principal_label req.client) (principal_label server)) tr req.nonce);
-
-    let (sid, tr) = new_session_id server tr in
-    let ((), tr) = set_state server sid (ServerReceiveRequest { client=req.client; nonce=req.nonce } <: protocol_state) tr in
-    assert(trace_invariant tr);
-
-    send_response_proof tr comm_keys_ids comm_layer_event_preds server cmeta_data req.nonce;
-    let (Some msg_id, tr) = send_response comm_keys_ids server cmeta_data req.nonce tr in
-
-    assert(tr == tr_out);
-    assert(trace_invariant tr_out);
-    ()
+    | _ -> ()
   )
 #pop-options
 

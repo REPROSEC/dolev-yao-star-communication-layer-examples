@@ -18,14 +18,13 @@ type request = {
 %splice [ps_request] (gen_parser (`request))
 %splice [ps_request_is_well_formed] (gen_is_well_formed_lemma (`request))
 
-instance parseable_serializeable_bytes_request: parseable_serializeable bytes request
-  = mk_parseable_serializeable ps_request
+[@@with_bytes bytes]
+type message_t =
+  | Request: request -> message_t
+  | Response: com_send_byte -> message_t
 
-val compute_message: principal -> bytes -> bytes
-let compute_message client nonce =
-  let req = { client; nonce } in
-  serialize request req
+%splice [ps_message_t] (gen_parser (`message_t))
+%splice [ps_message_t_is_well_formed] (gen_is_well_formed_lemma (`message_t))
 
-val decode_message: bytes -> option request
-let decode_message msg =
-  parse request msg
+instance parseable_serializeable_message_t: parseable_serializeable bytes message_t
+  = mk_parseable_serializeable ps_message_t

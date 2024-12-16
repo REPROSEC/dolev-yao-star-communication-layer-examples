@@ -9,8 +9,8 @@ open DY.Example.SingleConfMessage.Protocol.Total
 
 [@@with_bytes bytes]
 type single_message_state =
-  | SenderState: receiver:principal -> secret:bytes -> single_message_state
-  | ReceiverState: secret:bytes -> payload:bytes -> single_message_state
+  | SenderState: receiver:principal -> msg:single_message -> single_message_state
+  | ReceiverState: msg:single_message -> single_message_state
 
 %splice [ps_single_message_state] (gen_parser (`single_message_state))
 %splice [ps_single_message_state_is_well_formed] (gen_is_well_formed_lemma (`single_message_state))
@@ -27,8 +27,8 @@ instance local_state_single_message_state: local_state single_message_state = {
 
 [@@with_bytes bytes]
 type single_message_event =
-  | SenderSendMsg: sender:principal -> receiver:principal -> secret:bytes -> single_message_event
-  | ReceiverReceivedMsg: receiver:principal -> secret:bytes -> payload:bytes -> single_message_event
+  | SenderSendMsg: sender:principal -> receiver:principal -> msg:single_message -> single_message_event
+  | ReceiverReceivedMsg: receiver:principal -> msg:single_message -> single_message_event
 
 %splice [ps_single_message_event] (gen_parser (`single_message_event))
 %splice [ps_single_message_event_is_well_formed] (gen_is_well_formed_lemma (`single_message_event))
@@ -43,17 +43,17 @@ instance event_single_message_event: event single_message_event = {
 val prepare_message: principal -> principal -> traceful state_id
 let prepare_message sender receiver =
   let* secret = mk_rand NoUsage (join (principal_label sender) (principal_label receiver)) 32 in
+  let msg = {secret;} in
   let* state_id = new_session_id sender in
-  set_state sender state_id (SenderState receiver secret <: single_message_state);*
+  set_state sender state_id (SenderState receiver msg <: single_message_state);*
   return state_id
 
 val send_message: communication_keys_sess_ids -> principal -> principal -> state_id -> traceful (option timestamp)
 let send_message comm_keys_ids sender receiver state_id =
   let*? st:single_message_state = get_state sender state_id in
   match st with
-  | SenderState receiver secret -> (
-    let msg = compute_message secret in
-    trigger_event sender (SenderSendMsg sender receiver secret);*
+  | SenderState receiver msg -> (
+    trigger_event sender (SenderSendMsg sender receiver msg);*
     let*? msg_id = send_confidential comm_keys_ids sender receiver msg in
     return (Some msg_id)
   )
@@ -61,9 +61,8 @@ let send_message comm_keys_ids sender receiver state_id =
 
 val receive_message: communication_keys_sess_ids -> principal -> timestamp -> traceful (option state_id)
 let receive_message comm_keys_ids receiver msg_id =
-  let*? msg:bytes = receive_confidential comm_keys_ids receiver msg_id in
-  let*? single_msg:single_message = return (decode_message msg) in
-  trigger_event receiver (ReceiverReceivedMsg receiver single_msg.secret msg);*
+  let*? msg:single_message = receive_confidential #single_message comm_keys_ids receiver msg_id in
+  trigger_event receiver (ReceiverReceivedMsg receiver msg);*
   let* state_id = new_session_id receiver in
-  set_state receiver state_id (ReceiverState single_msg.secret msg <: single_message_state);*
+  set_state receiver state_id (ReceiverState msg <: single_message_state);*
   return (Some state_id)

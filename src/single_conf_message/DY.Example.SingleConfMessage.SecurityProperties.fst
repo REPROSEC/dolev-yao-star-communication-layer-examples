@@ -23,18 +23,18 @@ open DY.Example.SingleConfMessage.Protocol.Stateful.Proof
 // the secret either the sender or the receiver is
 // corrupt.
 val secret_secrecy_sender:
-  tr:trace -> sender:principal -> receiver:principal -> secret:bytes ->
+  tr:trace -> sender:principal -> receiver:principal -> msg:single_message ->
   Lemma
   (requires
     trace_invariant tr /\
-    attacker_knows tr secret /\
-    (exists sess_id. state_was_set tr sender sess_id (SenderState receiver secret))
+    attacker_knows tr msg.secret /\
+    (exists sess_id. state_was_set tr sender sess_id (SenderState receiver msg))
   )
   (ensures
     is_corrupt tr (principal_label sender) \/ is_corrupt tr (principal_label receiver)
   )
-let secret_secrecy_sender tr sender receiver secret =
-  attacker_only_knows_publishable_values tr secret;
+let secret_secrecy_sender tr sender receiver msg =
+  attacker_only_knows_publishable_values tr msg.secret;
   ()
 
 // On the receiver side we don't have any
@@ -63,15 +63,15 @@ let secret_secrecy_receiver tr sender receiver secret =
 val sender_authentication:
   tr:trace ->
   receiver:principal ->
-  secret:bytes ->
+  msg:single_message ->
   Lemma
   (requires
     trace_invariant tr /\
-    event_triggered tr receiver (ReceiverReceivedMsg receiver secret (compute_message secret))
+    event_triggered tr receiver (ReceiverReceivedMsg receiver msg)
   )
   (ensures
-    (exists sender. event_triggered tr sender (SenderSendMsg sender receiver secret)) \/
-    is_publishable tr (compute_message secret)
+    (exists sender. event_triggered tr sender (SenderSendMsg sender receiver msg)) \/
+    is_publishable tr (compute_message msg.secret)
     // We cannot prove `is_corrupt tr
     // (principal_label sender)` because the
     // sender is not authenticated. If the

@@ -17,17 +17,16 @@ open DY.Example.SingleAuthMessage.Protocol.Stateful
 let state_predicate_protocol: local_state_predicate single_message_state = {
   pred = (fun tr prin state_id st ->
     match st with
-    | SenderState sender' secret -> (
+    | SenderState sender' msg -> (
       let sender = prin in
       sender == sender' /\
-      event_triggered tr sender (SenderSendMsg sender secret) /\
-      is_publishable tr secret
+      event_triggered tr sender (SenderSendMsg sender msg) /\
+      is_publishable tr msg.secret
     )
-    | ReceiverState sender secret payload -> (
+    | ReceiverState sender msg -> (
       let receiver = prin in
-      (exists sender. event_triggered tr receiver (ReceiverReceivedMsg sender receiver secret payload)) /\
-      is_publishable tr secret /\
-      is_publishable tr payload
+      (exists sender. event_triggered tr receiver (ReceiverReceivedMsg sender receiver msg)) /\
+      is_publishable tr msg.secret
     )
   );
   pred_later = (fun tr1 tr2 sender state_id st -> ());
@@ -45,21 +44,21 @@ let all_sessions = [
 let event_predicate_protocol: event_predicate single_message_event =
   fun tr prin e ->
     match e with
-    | SenderSendMsg sender secret -> True
-    | ReceiverReceivedMsg sender receiver secret payload -> (
-      event_triggered tr receiver (CommAuthReceiveMsg sender receiver payload)
+    | SenderSendMsg sender msg -> (
+      rand_just_generated tr msg.secret
+    )
+    | ReceiverReceivedMsg sender receiver msg -> (
+      event_triggered tr receiver (CommAuthReceiveMsg sender receiver (serialize single_message msg))
     )
 #pop-options
 
 /// List of all local event predicates.
 
-val comm_layer_event_preds: comm_higher_layer_event_preds
+val comm_layer_event_preds: comm_higher_layer_event_preds single_message
 let comm_layer_event_preds = {
-  default_comm_higher_layer_event_preds with
-  send_auth = (fun tr sender payload -> 
-    exists secret.
-      event_triggered tr sender (SenderSendMsg sender secret) /\
-      decode_message payload == Some {secret}
+  default_comm_higher_layer_event_preds single_message with
+  send_auth = (fun tr sender msg ->
+      event_triggered tr sender (SenderSendMsg sender msg)
   )
 }
 
@@ -143,13 +142,11 @@ let send_message_proof tr comm_keys_ids sender receiver state_id =
   match send_message comm_keys_ids sender receiver state_id tr with
   | (None, tr_out) -> ()
   | (Some msg_id, tr_out) -> (
-    let (Some (SenderState sender' secret), tr) = get_state sender state_id tr in
-    assert(is_publishable tr secret);
-    assert(event_triggered tr sender (SenderSendMsg sender secret));
-    compute_message_proof tr sender receiver secret;
-    let payload = compute_message secret in
-    send_authenticated_proof tr comm_layer_event_preds comm_keys_ids sender receiver payload;
-    let (Some msg_id, tr) = send_authenticated comm_keys_ids sender receiver payload tr in
+    let (Some (SenderState sender' msg), tr) = get_state sender state_id tr in
+    assert(is_publishable tr msg.secret);
+    assert(event_triggered tr sender (SenderSendMsg sender msg));
+    send_authenticated_proof tr comm_layer_event_preds comm_keys_ids sender receiver msg;
+    let (Some msg_id, tr) = send_authenticated comm_keys_ids sender receiver msg tr in
     assert(tr_out == tr);
     ()
   )
@@ -170,14 +167,12 @@ let receive_message_proof tr comm_keys_ids receiver msg_id =
   match receive_message comm_keys_ids receiver msg_id tr with
   | (None, tr_out) -> ()
   | (Some state_id, tr_out) -> (
-    let (Some {sender; receiver=receiver'; payload}, tr) = receive_authenticated comm_keys_ids receiver msg_id tr in
-    assert(is_publishable tr payload);
-    decode_message_proof tr sender receiver payload;
-    let Some {secret} = decode_message payload in
-    let ((), tr) = trigger_event receiver (ReceiverReceivedMsg sender receiver secret payload) tr in
-    assert(event_triggered tr receiver (ReceiverReceivedMsg sender receiver secret payload));
+    let (Some {sender; receiver=receiver'; payload=msg}, tr) = receive_authenticated comm_keys_ids receiver msg_id tr in
+    assert(is_publishable tr msg.secret);
+    let ((), tr) = trigger_event receiver (ReceiverReceivedMsg sender receiver msg) tr in
+    assert(event_triggered tr receiver (ReceiverReceivedMsg sender receiver msg));
     let (state_id, tr) = new_session_id receiver tr in
-    let ((), tr) = set_state receiver state_id (ReceiverState sender secret payload) tr in
+    let ((), tr) = set_state receiver state_id (ReceiverState sender msg) tr in
     assert(tr_out == tr);
     ()
   )
