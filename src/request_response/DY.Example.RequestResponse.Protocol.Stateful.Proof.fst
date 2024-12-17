@@ -134,13 +134,11 @@ val client_send_request_proof:
   ))
   [SMTPat (trace_invariant tr); SMTPat (client_send_request comm_keys_ids client server tr)]
 let client_send_request_proof tr comm_keys_ids client server =
-  let (nonce, tr) = mk_rand NoUsage (join (principal_label client) (principal_label server)) 32 tr in
-  let req_msg:message_t = Request { client; nonce } in
-  send_request_proof tr comm_keys_ids comm_layer_event_preds client server req_msg;
+  assert(apply_com_layer_lemmas comm_layer_event_preds);
   ()
 #pop-options
 
-#push-options "--z3rlimit 20"
+#push-options "--z3rlimit 40"
 val server_receive_request_send_response_proof:
   tr:trace ->
   comm_keys_ids:communication_keys_sess_ids ->
@@ -156,26 +154,12 @@ val server_receive_request_send_response_proof:
   ))
   [SMTPat (trace_invariant tr); SMTPat (server_receive_request_send_response comm_keys_ids server msg_id tr)]
 let server_receive_request_send_response_proof tr comm_keys_ids server msg_id =
-  receive_request_proof #protocol_invariants_protocol #message_t tr comm_keys_ids comm_layer_event_preds server msg_id;
+  assert(apply_com_layer_lemmas comm_layer_event_preds);
   match receive_request #message_t comm_keys_ids server msg_id tr with
   | (None, tr) -> ()
   | (Some (msg, cmeta_data), tr) -> (
     match msg with
-    | Request req -> (
-      // Demonstration how `comm_reqres_higher_layer_event_preds` can be used
-      assert(is_secret (join (principal_label req.client) (principal_label server)) tr req.nonce \/
-      is_publishable tr req.nonce);
-      
-      // If we send the message before the state is set we can probably omit
-      // these lines
-      let (sid, tr) = new_session_id server tr in
-      let ((), tr) = set_state server sid (ServerReceiveRequest { client=req.client; nonce=req.nonce } <: protocol_state) tr in
-      assert(trace_invariant tr);
-
-      let payload = (Response {b=req.nonce}) in
-      send_response_proof #protocol_invariants_protocol #message_t tr comm_keys_ids comm_layer_event_preds server cmeta_data payload;
-      ()
-    )
+    | Request {client; nonce} -> ()
     | _ -> ()
   )
 #pop-options
@@ -195,13 +179,11 @@ val client_receive_response_proof:
   ))
   [SMTPat (trace_invariant tr); SMTPat (client_receive_response comm_keys_ids client sid msg_id tr)]
 let client_receive_response_proof tr comm_keys_ids client sid msg_id =
+  assert(apply_com_layer_lemmas comm_layer_event_preds);
   match get_state client sid tr with
   | (None, tr) -> ()
   | (Some state, tr) -> (
     match state with
-    | ClientSendRequest {server; cmeta_data; nonce} ->(
-    receive_response_proof tr comm_keys_ids comm_layer_event_preds client cmeta_data msg_id;
-    ()
-    )
+    | ClientSendRequest {server; cmeta_data; nonce} ->()
     | _ -> ()
   )  
