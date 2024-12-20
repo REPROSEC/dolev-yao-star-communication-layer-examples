@@ -138,7 +138,7 @@ let client_send_request_proof tr comm_keys_ids client server =
   ()
 #pop-options
 
-#push-options "--z3rlimit 40"
+#push-options "--ifuel 1 --z3rlimit 60"
 val server_receive_request_send_response_proof:
   tr:trace ->
   comm_keys_ids:communication_keys_sess_ids ->
@@ -155,18 +155,17 @@ val server_receive_request_send_response_proof:
   [SMTPat (trace_invariant tr); SMTPat (server_receive_request_send_response comm_keys_ids server msg_id tr)]
 let server_receive_request_send_response_proof tr comm_keys_ids server msg_id =
   assert(apply_com_layer_lemmas comm_layer_event_preds);
-  match receive_request #message_t comm_keys_ids server msg_id tr with
+  match receive_request comm_keys_ids server msg_id tr with
   | (None, tr) -> ()
   | (Some (msg, cmeta_data), tr) -> (
-    match msg with
-    | Request {client; nonce} -> ()
-    | _ -> ()
+    assert(is_well_formed message_t (is_knowable_by (get_response_label tr cmeta_data) tr) msg);
+    ()
   )
 #pop-options
 
+#push-options "--ifuel 4 --z3rlimit 40"
 val client_receive_response_proof:
   tr:trace ->
-  comm_keys_ids:communication_keys_sess_ids ->
   client:principal ->
   sid:state_id -> msg_id:timestamp ->
   Lemma
@@ -174,16 +173,11 @@ val client_receive_response_proof:
     trace_invariant tr
   )
   (ensures (
-    let (_, tr_out) = client_receive_response comm_keys_ids client sid msg_id tr in
+    let (_, tr_out) = client_receive_response client sid msg_id tr in
     trace_invariant tr_out
   ))
-  [SMTPat (trace_invariant tr); SMTPat (client_receive_response comm_keys_ids client sid msg_id tr)]
-let client_receive_response_proof tr comm_keys_ids client sid msg_id =
+  [SMTPat (trace_invariant tr); SMTPat (client_receive_response client sid msg_id tr)]
+let client_receive_response_proof tr client sid msg_id =
   assert(apply_com_layer_lemmas comm_layer_event_preds);
-  match get_state client sid tr with
-  | (None, tr) -> ()
-  | (Some state, tr) -> (
-    match state with
-    | ClientSendRequest {server; cmeta_data; nonce} ->()
-    | _ -> ()
-  )  
+  ()
+#pop-options

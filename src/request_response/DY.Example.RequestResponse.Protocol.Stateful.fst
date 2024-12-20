@@ -52,7 +52,7 @@ val client_send_request:
 let client_send_request comm_keys_ids client server =
   let* nonce = mk_rand NoUsage (join (principal_label client) (principal_label server)) 32 in
   let payload = Request {client; nonce} in
-  let*? (msg_id, cmeta_data) = send_request #message_t comm_keys_ids client server payload in
+  let*? (msg_id, cmeta_data) = send_request comm_keys_ids client server payload in
   let* sid = new_session_id client in
   set_state client sid (ClientSendRequest { server; cmeta_data; nonce } <: protocol_state);*
   return (Some (sid, msg_id))
@@ -62,23 +62,22 @@ val server_receive_request_send_response:
   principal -> timestamp ->
   traceful (option timestamp)
 let server_receive_request_send_response comm_keys_ids server msg_id =
-  let*? (msg, req_meta_data) = receive_request #message_t comm_keys_ids server msg_id in
+  let*? (msg, req_meta_data) = receive_request comm_keys_ids server msg_id in
   guard_tr (Request? msg);*?
   let Request req = msg in
   let* sid = new_session_id server in
   set_state server sid (ServerReceiveRequest { client=req.client; nonce=req.nonce } <: protocol_state);*
-  let*? msg_id = send_response #message_t comm_keys_ids server req_meta_data (Response {b=req.nonce}) in
+  let*? msg_id = send_response server req_meta_data (Response {b=req.nonce}) in
   return (Some msg_id)
 
 val client_receive_response:
-  communication_keys_sess_ids ->
   principal -> state_id -> timestamp ->
   traceful (option unit)
-let client_receive_response comm_keys_ids client sid msg_id =
+let client_receive_response client sid msg_id =
   let*? cstate = get_state client sid in
   guard_tr (ClientSendRequest? cstate);*?
   let ClientSendRequest { server; cmeta_data; nonce } = cstate in
-  let*? (msg, _) = receive_response #message_t comm_keys_ids client cmeta_data msg_id in
+  let*? (msg, _) = receive_response client cmeta_data msg_id in
   guard_tr (Response? msg);*?
   let Response res = msg in
   guard_tr (res.b = nonce);*?
