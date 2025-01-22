@@ -138,7 +138,7 @@ let client_send_request_proof tr comm_keys_ids client server =
   ()
 #pop-options
 
-#push-options "--ifuel 1 --z3rlimit 60"
+#push-options "--ifuel 1 --z3rlimit 80"
 val server_receive_request_send_response_proof:
   tr:trace ->
   comm_keys_ids:communication_keys_sess_ids ->

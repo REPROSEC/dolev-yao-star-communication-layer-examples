@@ -17,7 +17,7 @@ let debug () : traceful (option unit) =
 
   let*? msg_id = server_receive_request_send_response server_comm_keys_sess_ids server msg_id in
 
-  client_receive_response client_comm_keys_sess_ids client sid msg_id;*?
+  client_receive_response client sid msg_id;*?
 
   let* tr = get_trace in
   let _ = IO.debug_print_string (
