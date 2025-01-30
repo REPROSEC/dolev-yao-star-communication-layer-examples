@@ -53,8 +53,8 @@ let all_sessions = [
 val comm_layer_event_preds: comm_higher_layer_event_preds single_message
 let comm_layer_event_preds = {
   default_comm_higher_layer_event_preds single_message with
-  send_conf = (fun tr sender receiver (msg:single_message) -> 
-    event_triggered tr sender (SenderSendMsg sender receiver msg) /\
+  send_conf = (fun tr sender receiver (payload:single_message) -> 
+    event_triggered tr sender (SenderSendMsg sender receiver payload) /\
 
     // The user of the communication layer can
     // also use this function to demand specific
@@ -66,8 +66,9 @@ let comm_layer_event_preds = {
     // (join (principal_label sender)
     // (principal_label receiver)) tr secret \/
     // is_publishable tr payload);` 
-    is_secret (join (principal_label sender) (principal_label receiver)) tr msg.secret    
-  )
+    is_secret (join (principal_label sender) (principal_label receiver)) tr payload.secret    
+  );
+  send_conf_later = (fun tr1 tr2 sender receiver payload -> ())
 }
 #pop-options
 

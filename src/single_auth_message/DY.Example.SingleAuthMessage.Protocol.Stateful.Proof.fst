@@ -56,9 +56,10 @@ let event_predicate_protocol: event_predicate single_message_event =
 val comm_layer_event_preds: comm_higher_layer_event_preds single_message
 let comm_layer_event_preds = {
   default_comm_higher_layer_event_preds single_message with
-  send_auth = (fun tr sender msg ->
-      event_triggered tr sender (SenderSendMsg sender msg)
-  )
+  send_auth = (fun tr sender payload ->
+      event_triggered tr sender (SenderSendMsg sender payload)
+  );
+  send_auth_later = (fun tr1 tr2 sender payload -> ())
 }
 
 let all_events = [

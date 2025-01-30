@@ -29,15 +29,16 @@ let nonce_secrecy_client tr client server cmeta_data nonce =
 
 val server_authentication:
   tr:trace -> i:timestamp ->
-  client:principal -> server:principal -> payload:bytes -> key:bytes ->
+  client:principal -> server:principal -> response:bytes -> key:bytes ->
   Lemma
   (requires
     trace_invariant tr /\
-    event_triggered_at tr i client (CommClientReceiveResponse client server payload key)    
+    event_triggered_at tr i client (CommClientReceiveResponse client server response key)    
   )
   (ensures
-    event_triggered (prefix tr i) server (CommServerSendResponse server payload) \/
+    (exists request.
+      event_triggered (prefix tr i) server (CommServerSendResponse server request response)) \/
     is_corrupt (prefix tr i) (principal_label client) \/ 
     is_corrupt (prefix tr i) (principal_label server)
   )
-let server_authentication tr i client server payload key = ()
+let server_authentication tr i client server response key = ()
