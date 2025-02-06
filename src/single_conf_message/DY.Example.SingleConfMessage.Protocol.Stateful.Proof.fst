@@ -16,8 +16,8 @@ let state_predicate_protocol: local_state_predicate single_message_state = {
     match st with
     | SenderState receiver msg -> (
       let sender = prin in
-      get_label tr msg.secret == join (principal_label sender) (principal_label receiver) /\
-      is_knowable_by (join (principal_label sender) (principal_label receiver)) tr msg.secret
+      is_secret (comm_label sender receiver) tr msg.secret /\
+      is_knowable_by (comm_label sender receiver) tr msg.secret
     )
     | ReceiverState msg -> (
       let receiver = prin in
@@ -33,9 +33,8 @@ let event_predicate_protocol: event_predicate single_message_event =
     match e with
     | SenderSendMsg sender receiver msg -> True
     | ReceiverReceivedMsg receiver msg -> (
-      exists sender.
-        is_knowable_by (join (principal_label sender) (principal_label receiver)) tr msg.secret /\
-        event_triggered tr receiver (CommConfReceiveMsg receiver (serialize single_message msg))
+      (exists sender. is_knowable_by (comm_label sender receiver) tr msg.secret) /\
+      event_triggered tr receiver (CommConfReceiveMsg receiver (serialize single_message msg))
     )
 
 let all_sessions = [
@@ -53,7 +52,7 @@ let all_sessions = [
 val comm_layer_event_preds: comm_higher_layer_event_preds single_message
 let comm_layer_event_preds = {
   default_comm_higher_layer_event_preds single_message with
-  send_conf = (fun tr sender receiver (payload:single_message) -> 
+  send_conf = (fun tr sender receiver (payload:single_message) ->
     event_triggered tr sender (SenderSendMsg sender receiver payload) /\
 
     // The user of the communication layer can
@@ -63,10 +62,9 @@ let comm_layer_event_preds = {
     // side. With the following requirement on
     // `secret`, we can assert the following on
     // the receiver side: `assert(is_secret
-    // (join (principal_label sender)
-    // (principal_label receiver)) tr secret \/
-    // is_publishable tr payload);` 
-    is_secret (join (principal_label sender) (principal_label receiver)) tr payload.secret    
+    // (comm_label sender receiver) tr secret \/
+    // is_publishable tr payload);`
+    is_secret (comm_label sender receiver) tr payload.secret
   );
   send_conf_later = (fun tr1 tr2 sender receiver payload -> ())
 }
@@ -155,7 +153,7 @@ let send_message_proof tr comm_keys_ids sender receiver state_id =
   | (None, tr_out) -> ()
   | (Some msg_id, tr_out) -> (
     let (Some (SenderState receiver msg), tr) = get_state sender state_id tr in
-    
+
     let ((), tr) = trigger_event sender (SenderSendMsg sender receiver msg) tr in
     assert(has_communication_layer_crypto_predicates);
     assert(has_communication_layer_event_predicates comm_layer_event_preds);
@@ -168,7 +166,6 @@ let send_message_proof tr comm_keys_ids sender receiver state_id =
   )
 #pop-options
 
-#push-options "--fuel 3 --ifuel 3 --z3rlimit 50"
 val receive_message_proof:
   tr:trace -> comm_keys_ids:communication_keys_sess_ids -> receiver:principal -> msg_id:timestamp ->
   Lemma
@@ -187,24 +184,16 @@ let receive_message_proof tr comm_keys_ids receiver msg_id =
   | (Some state_id, tr_out) -> (
     let (Some msg, tr) = receive_confidential comm_keys_ids receiver msg_id tr in
 
-    // This can be shown without an additional lemma because the post-condition
-    // of `receive_confidential_proof` contains `exists sender. is_well_formed a
-    // (is_knowable_by (comm_label sender receiver) tr) payload`
-    assert(is_knowable_by (principal_label receiver) tr msg.secret);
+    let payload = serialize single_message msg in
+    let i = find_event_triggered_at_timestamp tr receiver (CommConfReceiveMsg receiver payload) in
+    conf_message_secrecy tr i comm_layer_event_preds receiver payload;
 
     let ((), tr) = trigger_event receiver (ReceiverReceivedMsg receiver msg) tr in
-    assert(event_triggered tr receiver (ReceiverReceivedMsg receiver msg));
 
-    // This can be shown because the
-    // `comm_layer_event_preds.send_conf`
-    // predicate guarantees this label of `secret`
-    // on the sender side.
-    assert(exists sender. is_secret (join (principal_label sender) (principal_label receiver)) tr msg.secret \/
-      is_publishable tr msg.secret);
-    
+    assert(is_knowable_by (principal_label receiver) tr msg.secret);
+
     let (state_id, tr) = new_session_id receiver tr in
     let ((), tr) = set_state receiver state_id (ReceiverState msg) tr in
     assert(tr_out == tr);
     ()
   )
-#pop-options
