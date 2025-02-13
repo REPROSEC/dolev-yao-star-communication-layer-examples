@@ -136,7 +136,7 @@ val prepare_message_proof:
 let prepare_message_proof tr sender receiver = ()
 
 
-#push-options "--fuel 0 --ifuel 3"
+#push-options "--ifuel 3"
 val send_message_proof:
   tr:trace -> comm_keys_ids:communication_keys_sess_ids -> sender:principal -> receiver:principal -> state_id:state_id ->
   Lemma
@@ -149,21 +149,8 @@ val send_message_proof:
   ))
   [SMTPat (trace_invariant tr); SMTPat (send_message comm_keys_ids sender receiver state_id tr)]
 let send_message_proof tr comm_keys_ids sender receiver state_id =
-  match send_message comm_keys_ids sender receiver state_id tr with
-  | (None, tr_out) -> ()
-  | (Some msg_id, tr_out) -> (
-    let (Some (SenderState receiver msg), tr) = get_state sender state_id tr in
-
-    let ((), tr) = trigger_event sender (SenderSendMsg sender receiver msg) tr in
-    assert(has_communication_layer_crypto_predicates);
-    assert(has_communication_layer_event_predicates comm_layer_event_preds);
-    assert(is_secret (join (principal_label sender) (principal_label receiver)) tr msg.secret);
-    send_confidential_proof tr comm_layer_event_preds comm_keys_ids sender receiver msg;
-    let (Some msg_id, tr) = send_confidential comm_keys_ids sender receiver msg tr in
-    assert(tr_out == tr);
-    assert(event_predicate_protocol tr sender (SenderSendMsg sender receiver msg));
-    ()
-  )
+  assert(apply_core_comm_layer_lemmas comm_layer_event_preds);
+  ()
 #pop-options
 
 val receive_message_proof:
@@ -178,22 +165,5 @@ val receive_message_proof:
   ))
   [SMTPat (trace_invariant tr); SMTPat (receive_message comm_keys_ids receiver msg_id tr)]
 let receive_message_proof tr comm_keys_ids receiver msg_id =
-  receive_confidential_proof tr comm_layer_event_preds comm_keys_ids receiver msg_id;
-  match receive_message comm_keys_ids receiver msg_id tr with
-  | (None, tr_out) -> ()
-  | (Some state_id, tr_out) -> (
-    let (Some msg, tr) = receive_confidential comm_keys_ids receiver msg_id tr in
-
-    let payload = serialize single_message msg in
-    let i = find_event_triggered_at_timestamp tr receiver (CommConfReceiveMsg receiver payload) in
-    conf_message_secrecy tr i comm_layer_event_preds receiver payload;
-
-    let ((), tr) = trigger_event receiver (ReceiverReceivedMsg receiver msg) tr in
-
-    assert(is_knowable_by (principal_label receiver) tr msg.secret);
-
-    let (state_id, tr) = new_session_id receiver tr in
-    let ((), tr) = set_state receiver state_id (ReceiverState msg) tr in
-    assert(tr_out == tr);
-    ()
-  )
+  assert(apply_core_comm_layer_lemmas comm_layer_event_preds);
+  ()
