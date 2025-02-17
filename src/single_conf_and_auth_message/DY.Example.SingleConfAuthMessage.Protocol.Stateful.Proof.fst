@@ -133,6 +133,7 @@ val prepare_message_proof:
   [SMTPat (trace_invariant tr); SMTPat (prepare_message sender receiver tr)]
 let prepare_message_proof tr sender receiver = ()
 
+#push-options "--ifuel 3"
 val send_message_proof:
   tr:trace -> comm_keys_ids:communication_keys_sess_ids -> sender:principal -> receiver:principal -> state_id:state_id ->
   Lemma
@@ -145,12 +146,9 @@ val send_message_proof:
   ))
   [SMTPat (trace_invariant tr); SMTPat (send_message comm_keys_ids sender receiver state_id tr)]
 let send_message_proof tr comm_keys_ids sender receiver state_id =
-  match get_state sender state_id tr with
-  | (Some (SenderState receiver msg), tr) -> (
-    send_confidential_authenticated_proof tr comm_layer_event_preds comm_keys_ids sender receiver msg;
-    ()
-  )
-  | _ -> ()
+  assert(apply_core_comm_layer_lemmas comm_layer_event_preds);
+  ()
+#pop-options
 
 val receive_message_proof:
   tr:trace -> comm_keys_ids:communication_keys_sess_ids -> receiver:principal -> msg_id:timestamp ->
@@ -164,20 +162,5 @@ val receive_message_proof:
   ))
   [SMTPat (trace_invariant tr); SMTPat (receive_message comm_keys_ids receiver msg_id tr)]
 let receive_message_proof tr comm_keys_ids receiver msg_id =
-  receive_confidential_authenticated_proof tr comm_layer_event_preds comm_keys_ids receiver msg_id;
-  match receive_message comm_keys_ids receiver msg_id tr with
-  | (None, tr) -> ()
-  | (Some state_id, tr_out) -> (
-    let (Some msg, tr) = receive_confidential_authenticated #single_message comm_keys_ids receiver msg_id tr in
-    let ((), tr) = trigger_event receiver (ReceiverReceivedMsg msg.sender receiver msg.payload) tr in
-    assert(event_triggered tr receiver (ReceiverReceivedMsg msg.sender receiver msg.payload));
-    let (state_id, tr) = new_session_id receiver tr in
-    let ((), tr) = set_state receiver state_id (ReceiverState msg.sender msg.payload) tr in
-    assert(is_knowable_by (principal_label receiver) tr msg.payload.secret);
-    assert(is_secret (join (principal_label msg.sender) (principal_label receiver)) tr msg.payload.secret \/
-            is_corrupt tr (long_term_key_label msg.sender)
-    );
-    assert(trace_invariant tr);
-    assert(tr == tr_out);
-    ()
-  )
+  assert(apply_core_comm_layer_lemmas comm_layer_event_preds);
+  ()

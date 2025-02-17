@@ -14,7 +14,7 @@ open DY.Example.RequestResponse.Protocol.Stateful
 
 #push-options "--ifuel 3 --z3rlimit 20"
 let state_predicates_protocol: local_state_predicate protocol_state = {
-  pred = (fun tr prin sess_id st -> 
+  pred = (fun tr prin sess_id st ->
     match st with
     | ClientSendRequest {server; cmeta_data; nonce} -> (
       let client = prin in
@@ -119,7 +119,7 @@ let protocol_invariants_protocol_communication_layer_reqres_event_invariant = al
 
 (*** Proofs ***)
 
-#push-options "--z3rlimit 10"
+#push-options "--ifuel 3"
 val client_send_request_proof:
   tr:trace ->
   comm_keys_ids:communication_keys_sess_ids ->
@@ -134,11 +134,11 @@ val client_send_request_proof:
   ))
   [SMTPat (trace_invariant tr); SMTPat (client_send_request comm_keys_ids client server tr)]
 let client_send_request_proof tr comm_keys_ids client server =
-  assert(apply_com_layer_lemmas comm_layer_event_preds);
+  assert(apply_reqres_comm_layer_lemmas comm_layer_event_preds);
   ()
 #pop-options
 
-#push-options "--ifuel 1 --z3rlimit 85"
+#push-options "--ifuel 3 --z3rlimit 75"
 val server_receive_request_send_response_proof:
   tr:trace ->
   comm_keys_ids:communication_keys_sess_ids ->
@@ -154,29 +154,8 @@ val server_receive_request_send_response_proof:
   ))
   [SMTPat (trace_invariant tr); SMTPat (server_receive_request_send_response comm_keys_ids server msg_id tr)]
 let server_receive_request_send_response_proof tr comm_keys_ids server msg_id =
-  assert(apply_com_layer_lemmas comm_layer_event_preds);
-  let (_, tr_out) = server_receive_request_send_response comm_keys_ids server msg_id tr in
-  match receive_request comm_keys_ids server msg_id tr with
-  | (None, tr) -> assert(tr == tr_out)
-  | (Some (Request req, cmeta_data), tr) -> (
-    let send_event client = CommClientSendRequest client server (serialize message_t (Request req)) cmeta_data.key in
-    assert(trace_invariant tr);
-    eliminate (exists client. event_triggered tr client (send_event client)) \/
-              is_publishable tr cmeta_data.key
-    returns is_knowable_by (comm_label req.client server) tr req.nonce
-    with _. eliminate exists client. event_triggered tr client (send_event client)
-      returns _
-      with _. (
-        let i = find_event_triggered_at_timestamp tr client (send_event client) in
-        // Triggers event_triggered_at_implies_pred
-        assert(event_triggered_at tr i client (send_event client));
-        // From protocol event predicate
-        assert(is_knowable_by (comm_label req.client server) tr req.nonce)
-      )
-    and _. assert(is_well_formed message_t (is_publishable tr) (Request req));
-    ()
-  )
-  | (Some _, tr) -> assert(tr == tr_out)
+  assert(apply_reqres_comm_layer_lemmas comm_layer_event_preds);
+  ()
 #pop-options
 
 #push-options "--ifuel 4 --z3rlimit 40"
@@ -194,6 +173,6 @@ val client_receive_response_proof:
   ))
   [SMTPat (trace_invariant tr); SMTPat (client_receive_response client sid msg_id tr)]
 let client_receive_response_proof tr client sid msg_id =
-  assert(apply_com_layer_lemmas comm_layer_event_preds);
+  assert(apply_reqres_comm_layer_lemmas comm_layer_event_preds);
   ()
 #pop-options

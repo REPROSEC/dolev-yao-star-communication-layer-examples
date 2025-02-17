@@ -51,13 +51,10 @@ let prepare_message sender receiver =
 val send_message: communication_keys_sess_ids -> principal -> principal -> state_id -> traceful (option timestamp)
 let send_message comm_keys_ids sender receiver state_id =
   let*? st:single_message_state = get_state sender state_id in
-  match st with
-  | SenderState receiver msg -> (
-    trigger_event sender (SenderSendMsg sender receiver msg);*
-    let*? msg_id = send_confidential comm_keys_ids sender receiver msg in
-    return (Some msg_id)
-  )
-  | _ -> return None
+  guard_tr (SenderState? st);*?
+  let SenderState receiver msg = st in
+  trigger_event sender (SenderSendMsg sender receiver msg);*
+  send_confidential comm_keys_ids sender receiver msg
 
 val receive_message: communication_keys_sess_ids -> principal -> timestamp -> traceful (option state_id)
 let receive_message comm_keys_ids receiver msg_id =
