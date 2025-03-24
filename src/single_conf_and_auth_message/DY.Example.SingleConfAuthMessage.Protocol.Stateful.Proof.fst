@@ -146,7 +146,7 @@ val send_message_proof:
   ))
   [SMTPat (trace_invariant tr); SMTPat (send_message comm_keys_ids sender receiver state_id tr)]
 let send_message_proof tr comm_keys_ids sender receiver state_id =
-  assert(apply_core_comm_layer_lemmas comm_layer_event_preds);
+  enable_core_comm_layer_lemmas comm_layer_event_preds;
   ()
 #pop-options
 
@@ -162,5 +162,5 @@ val receive_message_proof:
   ))
   [SMTPat (trace_invariant tr); SMTPat (receive_message comm_keys_ids receiver msg_id tr)]
 let receive_message_proof tr comm_keys_ids receiver msg_id =
-  assert(apply_core_comm_layer_lemmas comm_layer_event_preds);
+  enable_core_comm_layer_lemmas comm_layer_event_preds;
   ()

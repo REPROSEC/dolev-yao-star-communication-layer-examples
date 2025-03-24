@@ -134,7 +134,7 @@ val client_send_request_proof:
   ))
   [SMTPat (trace_invariant tr); SMTPat (client_send_request comm_keys_ids client server tr)]
 let client_send_request_proof tr comm_keys_ids client server =
-  assert(apply_reqres_comm_layer_lemmas comm_layer_event_preds);
+  enable_reqres_comm_layer_lemmas comm_layer_event_preds;
   ()
 #pop-options
 
@@ -154,7 +154,7 @@ val server_receive_request_send_response_proof:
   ))
   [SMTPat (trace_invariant tr); SMTPat (server_receive_request_send_response comm_keys_ids server msg_id tr)]
 let server_receive_request_send_response_proof tr comm_keys_ids server msg_id =
-  assert(apply_reqres_comm_layer_lemmas comm_layer_event_preds);
+  enable_reqres_comm_layer_lemmas comm_layer_event_preds;
   ()
 #pop-options
 
@@ -173,6 +173,6 @@ val client_receive_response_proof:
   ))
   [SMTPat (trace_invariant tr); SMTPat (client_receive_response client sid msg_id tr)]
 let client_receive_response_proof tr client sid msg_id =
-  assert(apply_reqres_comm_layer_lemmas comm_layer_event_preds);
+  enable_reqres_comm_layer_lemmas comm_layer_event_preds;
   ()
 #pop-options

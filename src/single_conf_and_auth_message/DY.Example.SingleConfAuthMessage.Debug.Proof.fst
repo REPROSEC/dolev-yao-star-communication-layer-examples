@@ -2,9 +2,9 @@ module DY.Example.SingleConfAuthMessage.Debug.Proof
 
 open DY.Core
 open DY.Lib
-open DY.Example.SingleConfMessage.Protocol.Stateful
-open DY.Example.SingleConfMessage.Protocol.Stateful.Proof
-open DY.Example.SingleConfMessage.Debug
+open DY.Example.SingleConfAuthMessage.Protocol.Stateful
+open DY.Example.SingleConfAuthMessage.Protocol.Stateful.Proof
+open DY.Example.SingleConfAuthMessage.Debug
 
 /// This module proves that the debug function
 /// fulfills the trace invariants.
@@ -15,7 +15,7 @@ open DY.Example.SingleConfMessage.Debug
 /// duplicate the code from the debug function and
 /// call all the lemmas for the stateful code manually.
 
-#set-options "--fuel 0 --ifuel 0 --z3rlimit 10 --z3cliopt 'smt.qi.eager_threshold=100'"
+#set-options "--fuel 0 --ifuel 3 --z3rlimit 10 --z3cliopt 'smt.qi.eager_threshold=100'"
 val debug_proof:
   tr:trace ->
   Lemma

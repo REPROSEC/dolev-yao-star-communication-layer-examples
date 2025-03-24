@@ -15,7 +15,7 @@ open DY.Example.SingleAuthMessage.Debug
 /// duplicate the code from the debug function and
 /// call all the lemmas for the stateful code manually.
 
-#set-options "--fuel 0 --ifuel 0 --z3rlimit 20 --z3cliopt 'smt.qi.eager_threshold=100'"
+#set-options "--fuel 0 --ifuel 3 --z3rlimit 20 --z3cliopt 'smt.qi.eager_threshold=100'"
 val debug_proof:
   tr:trace ->
   Lemma

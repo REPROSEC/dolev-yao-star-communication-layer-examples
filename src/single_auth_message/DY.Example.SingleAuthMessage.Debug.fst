@@ -27,7 +27,7 @@ let debug () : traceful (option unit) =
   let _ = IO.debug_print_string (
       trace_to_string default_trace_to_string_printers tr
     ) in
-  
+
   return (Some ())
 
 //Run ``debug ()`` when the module loads
