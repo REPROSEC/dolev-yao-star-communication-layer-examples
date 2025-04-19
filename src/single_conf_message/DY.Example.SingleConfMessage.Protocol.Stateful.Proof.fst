@@ -40,7 +40,7 @@ let event_predicate_protocol: event_predicate single_message_event =
 let all_sessions = [
   pki_tag_and_invariant;
   private_keys_tag_and_invariant;
-  (|local_state_single_message_state.tag, local_state_predicate_to_local_bytes_state_predicate state_predicate_protocol|);
+  mk_local_state_tag_and_pred state_predicate_protocol;
 ]
 
 /// List of all local event predicates.
@@ -72,7 +72,7 @@ let comm_layer_event_preds = {
 
 let all_events = [
   event_predicate_communication_layer_and_tag comm_layer_event_preds;
-  (event_single_message_event.tag, compile_event_pred event_predicate_protocol)
+  mk_event_tag_and_pred event_predicate_protocol
 ]
 
 /// Create the global trace invariants.
@@ -87,38 +87,10 @@ instance protocol_invariants_protocol: protocol_invariants = {
   trace_invs = trace_invariants_protocol;
 }
 
-/// Lemmas that the global state predicate contains all the local ones
+/// Lemmas that the global predicates contain all the local ones
 
-val all_sessions_has_all_sessions: unit -> Lemma (norm [delta_only [`%all_sessions; `%for_allP]; iota; zeta] (for_allP has_local_bytes_state_predicate all_sessions))
-let all_sessions_has_all_sessions () =
-  assert_norm(List.Tot.no_repeats_p (List.Tot.map dfst (all_sessions)));
-  mk_state_pred_correct all_sessions;
-  norm_spec [delta_only [`%all_sessions; `%for_allP]; iota; zeta] (for_allP has_local_bytes_state_predicate all_sessions)
-
-val protocol_invariants_protocol_has_pki_invariant: squash has_pki_invariant
-let protocol_invariants_protocol_has_pki_invariant = all_sessions_has_all_sessions ()
-
-val protocol_invariants_protocol_has_private_keys_invariant: squash has_private_keys_invariant
-let protocol_invariants_protocol_has_private_keys_invariant = all_sessions_has_all_sessions ()
-
-val protocol_invariants_protocol_has_protocol_session_invariant: squash (has_local_state_predicate state_predicate_protocol)
-let protocol_invariants_protocol_has_protocol_session_invariant = all_sessions_has_all_sessions ()
-
-/// Lemmas that the global event predicate contains all the local ones
-
-val all_events_has_all_events: unit -> Lemma (norm [delta_only [`%all_events; `%for_allP]; iota; zeta] (for_allP has_compiled_event_pred all_events))
-let all_events_has_all_events () =
-  assert_norm(List.Tot.no_repeats_p (List.Tot.map fst (all_events)));
-  mk_event_pred_correct all_events;
-  norm_spec [delta_only [`%all_events; `%for_allP]; iota; zeta] (for_allP has_compiled_event_pred all_events);
-  let dumb_lemma (x:prop) (y:prop): Lemma (requires x /\ x == y) (ensures y) = () in
-  dumb_lemma (for_allP has_compiled_event_pred all_events) (norm [delta_only [`%all_events; `%for_allP]; iota; zeta] (for_allP has_compiled_event_pred all_events))
-
-val protocol_invariants_has_communication_layer_event_invariants: squash (has_event_pred (event_predicate_communication_layer comm_layer_event_preds))
-let protocol_invariants_has_communication_layer_event_invariants = all_events_has_all_events ()
-
-val protocol_invariants_protocol_has_protocol_event_invariant: squash (has_event_pred event_predicate_protocol)
-let protocol_invariants_protocol_has_protocol_event_invariant = all_events_has_all_events ()
+let _ = do_split_boilerplate mk_state_pred_correct all_sessions
+let _ = do_split_boilerplate mk_event_pred_correct all_events
 
 (*** Proofs ***)
 
@@ -149,7 +121,7 @@ val send_message_proof:
   ))
   [SMTPat (trace_invariant tr); SMTPat (send_message comm_keys_ids sender receiver state_id tr)]
 let send_message_proof tr comm_keys_ids sender receiver state_id =
-  assert(apply_core_comm_layer_lemmas comm_layer_event_preds);
+  enable_core_comm_layer_lemmas comm_layer_event_preds;
   ()
 #pop-options
 
@@ -165,5 +137,5 @@ val receive_message_proof:
   ))
   [SMTPat (trace_invariant tr); SMTPat (receive_message comm_keys_ids receiver msg_id tr)]
 let receive_message_proof tr comm_keys_ids receiver msg_id =
-  assert(apply_core_comm_layer_lemmas comm_layer_event_preds);
+  enable_core_comm_layer_lemmas comm_layer_event_preds;
   ()

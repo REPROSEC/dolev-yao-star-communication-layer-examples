@@ -43,7 +43,7 @@ let all_sessions = [
   pki_tag_and_invariant;
   private_keys_tag_and_invariant;
   state_predicates_communication_layer_and_tag;
-  (|protocol_state_tag, local_state_predicate_to_local_bytes_state_predicate state_predicates_protocol|);
+  mk_local_state_tag_and_pred state_predicates_protocol;
 ]
 
 (*** Event Predicates ***)
@@ -79,47 +79,16 @@ instance protocol_invariants_protocol: protocol_invariants = {
   trace_invs = trace_invariants_protocol;
 }
 
-/// Lemmas that the global state predicate contains all the local ones
+/// Lemmas that the global predicates contain all the local ones
 
-val all_sessions_has_all_sessions: unit -> Lemma (norm [delta_only [`%all_sessions; `%for_allP]; iota; zeta] (for_allP has_local_bytes_state_predicate all_sessions))
-let all_sessions_has_all_sessions () =
-  assert_norm(List.Tot.no_repeats_p (List.Tot.map dfst (all_sessions)));
-  mk_state_pred_correct all_sessions;
-  norm_spec [delta_only [`%all_sessions; `%for_allP]; iota; zeta] (for_allP has_local_bytes_state_predicate all_sessions)
-
-val protocol_invariants_protocol_has_pki_invariant: squash has_pki_invariant
-let protocol_invariants_protocol_has_pki_invariant = all_sessions_has_all_sessions ()
-
-val protocol_invariants_protocol_has_private_keys_invariant: squash has_private_keys_invariant
-let protocol_invariants_protocol_has_private_keys_invariant = all_sessions_has_all_sessions ()
-
-val protocol_invariants_protocol_has_communication_layer_state_invariant: squash (has_local_state_predicate state_predicates_communication_layer)
-let protocol_invariants_protocol_has_communication_layer_state_invariant = all_sessions_has_all_sessions ()
-
-val protocol_invariants_protocol_has_protocol_state_invariant: squash (has_local_state_predicate state_predicates_protocol)
-let protocol_invariants_protocol_has_protocol_state_invariant = all_sessions_has_all_sessions ()
-
-/// Lemmas that the global event predicate contains all the local ones
-
-val all_events_has_all_events: unit -> Lemma (norm [delta_only [`%all_events; `%for_allP]; iota; zeta] (for_allP has_compiled_event_pred all_events))
-let all_events_has_all_events () =
-  assert_norm(List.Tot.no_repeats_p (List.Tot.map fst (all_events)));
-  mk_event_pred_correct all_events;
-  norm_spec [delta_only [`%all_events; `%for_allP]; iota; zeta] (for_allP has_compiled_event_pred all_events);
-  let dumb_lemma (x:prop) (y:prop): Lemma (requires x /\ x == y) (ensures y) = () in
-  dumb_lemma (for_allP has_compiled_event_pred all_events) (norm [delta_only [`%all_events; `%for_allP]; iota; zeta] (for_allP has_compiled_event_pred all_events))
-
-val protocol_invariants_has_communication_layer_event_invariants: squash (has_event_pred (event_predicate_communication_layer request_response_event_preconditions))
-let protocol_invariants_has_communication_layer_event_invariants = all_events_has_all_events ()
-
-#push-options "--fuel 1"
-val protocol_invariants_protocol_communication_layer_reqres_event_invariant: squash (has_event_pred (event_predicate_communication_layer_reqres comm_layer_event_preds))
-let protocol_invariants_protocol_communication_layer_reqres_event_invariant = all_events_has_all_events ()
+#push-options "--fuel 2"
+let _ = do_split_boilerplate mk_state_pred_correct all_sessions
+let _ = do_split_boilerplate mk_event_pred_correct all_events
 #pop-options
 
 (*** Proofs ***)
 
-#push-options "--ifuel 3"
+#push-options "--ifuel 3 --fuel 1"
 val client_send_request_proof:
   tr:trace ->
   comm_keys_ids:communication_keys_sess_ids ->
@@ -134,11 +103,11 @@ val client_send_request_proof:
   ))
   [SMTPat (trace_invariant tr); SMTPat (client_send_request comm_keys_ids client server tr)]
 let client_send_request_proof tr comm_keys_ids client server =
-  assert(apply_reqres_comm_layer_lemmas comm_layer_event_preds);
+  enable_reqres_comm_layer_lemmas comm_layer_event_preds;
   ()
 #pop-options
 
-#push-options "--ifuel 3 --z3rlimit 75"
+#push-options "--ifuel 3 --fuel 1 --z3rlimit 50"
 val server_receive_request_send_response_proof:
   tr:trace ->
   comm_keys_ids:communication_keys_sess_ids ->
@@ -154,11 +123,11 @@ val server_receive_request_send_response_proof:
   ))
   [SMTPat (trace_invariant tr); SMTPat (server_receive_request_send_response comm_keys_ids server msg_id tr)]
 let server_receive_request_send_response_proof tr comm_keys_ids server msg_id =
-  assert(apply_reqres_comm_layer_lemmas comm_layer_event_preds);
+  enable_reqres_comm_layer_lemmas comm_layer_event_preds;
   ()
 #pop-options
 
-#push-options "--ifuel 4 --z3rlimit 40"
+#push-options "--ifuel 4 --fuel 1 --z3rlimit 40"
 val client_receive_response_proof:
   tr:trace ->
   client:principal ->
@@ -173,6 +142,6 @@ val client_receive_response_proof:
   ))
   [SMTPat (trace_invariant tr); SMTPat (client_receive_response client sid msg_id tr)]
 let client_receive_response_proof tr client sid msg_id =
-  assert(apply_reqres_comm_layer_lemmas comm_layer_event_preds);
+  enable_reqres_comm_layer_lemmas comm_layer_event_preds;
   ()
 #pop-options

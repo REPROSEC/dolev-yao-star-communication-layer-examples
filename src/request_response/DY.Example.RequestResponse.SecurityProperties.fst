@@ -27,6 +27,7 @@ let nonce_secrecy_client tr client server cmeta_data nonce =
   attacker_only_knows_publishable_values tr nonce
 
 
+#push-options "--fuel 1"
 val server_authentication:
   tr:trace -> i:timestamp ->
   client:principal -> server:principal -> response:bytes -> key:bytes ->
@@ -42,3 +43,4 @@ val server_authentication:
     is_corrupt (prefix tr i) (principal_label server)
   )
 let server_authentication tr i client server response key = ()
+#pop-options

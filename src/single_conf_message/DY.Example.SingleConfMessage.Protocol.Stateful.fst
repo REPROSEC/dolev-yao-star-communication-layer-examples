@@ -20,7 +20,7 @@ instance parseable_serializeable_bytes_single_message_state: parseable_serialize
 
 instance local_state_single_message_state: local_state single_message_state = {
   tag = "SingleConfMessage.State";
-  format = parseable_serializeable_bytes_single_message_state;
+  format = mk_parseable_serializeable ps_single_message_state;
 }
 
 (*** Event type ***)
