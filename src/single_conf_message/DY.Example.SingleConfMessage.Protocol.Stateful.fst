@@ -58,7 +58,7 @@ let send_message comm_keys_ids sender receiver state_id =
 
 val receive_message: communication_keys_sess_ids -> principal -> timestamp -> traceful (option state_id)
 let receive_message comm_keys_ids receiver msg_id =
-  let*? msg:single_message = receive_confidential #single_message comm_keys_ids receiver msg_id in
+  let*? msg:single_message = receive_confidential comm_keys_ids receiver msg_id in
   trigger_event receiver (ReceiverReceivedMsg receiver msg);*
   let* state_id = new_session_id receiver in
   set_state receiver state_id (ReceiverState msg <: single_message_state);*

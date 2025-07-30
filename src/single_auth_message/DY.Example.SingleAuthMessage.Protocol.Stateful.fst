@@ -54,7 +54,7 @@ let send_message comm_keys_ids sender receiver state_id =
   let*? st:single_message_state = get_state sender state_id in
   guard_tr (SenderState? st);*?
   let SenderState msg = st in
-  send_authenticated #single_message comm_keys_ids sender receiver msg
+  send_authenticated comm_keys_ids sender receiver msg
 
 val receive_message: communication_keys_sess_ids -> principal -> timestamp -> traceful (option state_id)
 let receive_message comm_keys_ids receiver msg_id =
