@@ -6,10 +6,20 @@ open DY.Lib
 
 open DY.Example.RequestResponse.Protocol.Total
 
+instance comm_layer_reqres_tag_protocol: comm_layer_reqres_tag = {
+  tag = "DY.Lib.Communication.Layer.Reqres.Protocol"
+}
+
+instance parser_serializer_protocol: comparse_parser_serializer message_t = {
+  ps_a = ps_message_t;
+  ps_able = mk_parseable_serializeable ps_message_t;
+  eq_property = ();
+}
+
 [@@with_bytes bytes]
 type client_state = {
   server: principal;
-  cmeta_data: comm_meta_data;
+  cmeta_data: comm_meta_data message_t;
   nonce: bytes;
 }
 

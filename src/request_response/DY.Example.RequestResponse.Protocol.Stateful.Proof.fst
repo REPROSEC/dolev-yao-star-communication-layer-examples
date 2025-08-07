@@ -18,7 +18,7 @@ let state_predicates_protocol: local_state_predicate protocol_state = {
     match st with
     | ClientSendRequest {server; cmeta_data; nonce} -> (
       let client = prin in
-      comm_meta_data_knowable tr client cmeta_data /\
+      comm_meta_data_knowable tr message_t client cmeta_data /\
       is_secret (comm_label client server) tr nonce
     )
     | ServerReceiveRequest {client; nonce} -> (
@@ -27,7 +27,7 @@ let state_predicates_protocol: local_state_predicate protocol_state = {
     )
     | ClientReceiveResponse {server; cmeta_data; nonce} -> (
       let client = prin in
-      comm_meta_data_knowable tr client cmeta_data /\
+      comm_meta_data_knowable tr message_t client cmeta_data /\
       is_secret (comm_label client server) tr nonce
     )
   );
@@ -42,7 +42,7 @@ let protocol_state_tag = "Protocol.State"
 let all_sessions = [
   pki_tag_and_invariant;
   private_keys_tag_and_invariant;
-  state_predicates_communication_layer_and_tag;
+  state_predicates_communication_layer_and_tag message_t;
   mk_local_state_tag_and_pred state_predicates_protocol;
 ]
 
@@ -81,8 +81,13 @@ instance protocol_invariants_protocol: protocol_invariants = {
 
 /// Lemmas that the global predicates contain all the local ones
 
+let fst_dtuple (x: dtuple2 'a 'b) : 'a = Mkdtuple2?._1 x
+
 #push-options "--fuel 2"
-let _ = do_split_boilerplate mk_state_pred_correct all_sessions
+let _ = (
+  assert_norm(List.Tot.no_repeats_p (List.Tot.map fst_dtuple (all_sessions)));
+  do_split_boilerplate mk_state_pred_correct all_sessions
+)
 let _ = do_split_boilerplate mk_event_pred_correct all_events
 #pop-options
 
