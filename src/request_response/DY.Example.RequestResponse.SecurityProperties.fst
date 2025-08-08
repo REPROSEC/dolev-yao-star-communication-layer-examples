@@ -3,6 +3,7 @@ module DY.Example.RequestResponse.SecurityProperties
 open DY.Core
 open DY.Lib
 
+open DY.Example.RequestResponse.Protocol.Total
 open DY.Example.RequestResponse.Protocol.Stateful
 open DY.Example.RequestResponse.Protocol.Stateful.Proof
 
@@ -10,7 +11,7 @@ open DY.Example.RequestResponse.Protocol.Stateful.Proof
 
 val nonce_secrecy_client:
   tr:trace ->
-  client:principal -> server:principal -> cmeta_data:comm_meta_data -> nonce:bytes ->
+  client:principal -> server:principal -> cmeta_data:comm_meta_data message_t -> nonce:bytes ->
   Lemma
   (requires
     trace_invariant tr /\

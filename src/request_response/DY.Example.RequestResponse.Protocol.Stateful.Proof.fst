@@ -83,12 +83,15 @@ instance protocol_invariants_protocol: protocol_invariants = {
 
 let fst_dtuple (x: dtuple2 'a 'b) : 'a = Mkdtuple2?._1 x
 
-#push-options "--fuel 2"
+#push-options "--fuel 4"
 let _ = (
   assert_norm(List.Tot.no_repeats_p (List.Tot.map fst_dtuple (all_sessions)));
   do_split_boilerplate mk_state_pred_correct all_sessions
 )
-let _ = do_split_boilerplate mk_event_pred_correct all_events
+let _ = (
+  assert_norm(List.Tot.no_repeats_p (List.Tot.map fst (all_events)));
+  do_split_boilerplate mk_event_pred_correct all_events
+)
 #pop-options
 
 (*** Proofs ***)
