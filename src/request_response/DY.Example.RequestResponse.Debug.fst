@@ -3,6 +3,7 @@ module DY.Example.RequestResponse.Debug
 open DY.Core
 open DY.Lib
 
+open DY.Example.RequestResponse.Protocol.Total
 open DY.Example.RequestResponse.Protocol.Stateful
 
 let debug () : traceful (option unit) =
@@ -11,7 +12,7 @@ let debug () : traceful (option unit) =
   let client = "client" in
   let server = "server" in
 
-  let*? client_comm_keys_sess_ids, server_comm_keys_sess_ids = initialize_communication client server in
+  let*? client_comm_keys_sess_ids, server_comm_keys_sess_ids = initialize_communication_reqres message_t client server in
 
   let*? (sid, msg_id) = client_send_request client_comm_keys_sess_ids client server in
 

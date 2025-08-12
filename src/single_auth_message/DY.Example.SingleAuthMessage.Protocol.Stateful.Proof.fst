@@ -47,15 +47,15 @@ let event_predicate_protocol: event_predicate single_message_event =
       rand_just_generated tr msg.secret
     )
     | ReceiverReceivedMsg sender receiver msg -> (
-      event_triggered tr receiver (CommAuthReceiveMsg sender receiver (serialize single_message msg))
+      event_triggered tr receiver (CommAuthReceiveMsg sender receiver msg <: communication_core_event single_message)
     )
 #pop-options
 
 /// List of all local event predicates.
 
-val comm_layer_event_preds: comm_higher_layer_event_preds single_message
+val comm_layer_event_preds: comm_core_higher_layer_event_preds single_message
 let comm_layer_event_preds = {
-  default_comm_higher_layer_event_preds single_message with
+  default_comm_core_higher_layer_event_preds single_message with
   send_auth = (fun tr sender payload ->
       event_triggered tr sender (SenderSendMsg sender payload)
   );
@@ -63,7 +63,7 @@ let comm_layer_event_preds = {
 }
 
 let all_events = [
-  event_predicate_communication_layer_and_tag comm_layer_event_preds;
+  event_predicate_communication_layer_core_and_tag comm_layer_event_preds;
   mk_event_tag_and_pred event_predicate_protocol
 ]
 
@@ -82,7 +82,12 @@ instance protocol_invariants_protocol: protocol_invariants = {
 /// Lemmas that the global predicates contain all the local ones
 
 let _ = do_split_boilerplate mk_state_pred_correct all_sessions
-let _ = do_split_boilerplate mk_event_pred_correct all_events
+#push-options "--fuel 2"
+let _ = (
+  assert_norm(List.Tot.no_repeats_p (List.Tot.map fst (all_events)));
+  do_split_boilerplate mk_event_pred_correct all_events
+)
+#pop-options
 
 (*** Proofs ***)
 

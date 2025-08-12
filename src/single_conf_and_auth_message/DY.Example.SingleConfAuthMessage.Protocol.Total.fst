@@ -16,5 +16,7 @@ type single_message = {
 %splice [ps_single_message] (gen_parser (`single_message))
 %splice [ps_single_message_is_well_formed] (gen_is_well_formed_lemma (`single_message))
 
-instance parseable_serializeable_bytes_single_message: parseable_serializeable bytes single_message
-  = mk_parseable_serializeable ps_single_message
+instance comm_layer_core_config_protocol: comm_layer_core_config single_message = {
+  tag = "DY.Lib.Communication.Layer.Core.Protocol";
+  ps_a = ps_single_message;
+}

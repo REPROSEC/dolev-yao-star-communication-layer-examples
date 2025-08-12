@@ -33,14 +33,14 @@ let sender_authentication tr i sender receiver secret = ()
 val sender_authentication':
   tr:trace -> i:timestamp ->
   sender:principal -> receiver:principal ->
-  payload:bytes ->
+  payload:single_message ->
   Lemma
   (requires
     trace_invariant tr /\
-    event_triggered_at tr i receiver (CommAuthReceiveMsg sender receiver payload)
+    event_triggered_at tr i receiver (CommAuthReceiveMsg sender receiver payload <: communication_core_event single_message)
   )
   (ensures
-    event_triggered (prefix tr i) sender (CommAuthSendMsg sender payload) \/
+    event_triggered (prefix tr i) sender (CommAuthSendMsg sender payload <: communication_core_event single_message) \/
     is_corrupt (prefix tr i) (long_term_key_label sender)
   )
 let sender_authentication' tr i sender receiver payload = ()

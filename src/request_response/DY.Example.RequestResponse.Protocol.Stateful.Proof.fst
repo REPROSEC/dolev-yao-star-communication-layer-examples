@@ -42,7 +42,7 @@ let protocol_state_tag = "Protocol.State"
 let all_sessions = [
   pki_tag_and_invariant;
   private_keys_tag_and_invariant;
-  state_predicates_communication_layer_and_tag message_t;
+  state_predicates_communication_layer_reqres_and_tag message_t;
   mk_local_state_tag_and_pred state_predicates_protocol;
 ]
 
@@ -57,7 +57,7 @@ let comm_layer_event_preds = {
     | Request {client; nonce} -> (
       is_secret (comm_label client server) tr nonce
     )
-    | Response {b} -> True
+    | Response b -> True
   );
   send_request_later = (fun tr1 tr2 client server payload key_label -> ())
 }

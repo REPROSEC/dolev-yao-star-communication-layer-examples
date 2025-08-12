@@ -6,16 +6,6 @@ open DY.Lib
 
 open DY.Example.RequestResponse.Protocol.Total
 
-instance comm_layer_reqres_tag_protocol: comm_layer_reqres_tag = {
-  tag = "DY.Lib.Communication.Layer.Reqres.Protocol"
-}
-
-instance parser_serializer_protocol: comparse_parser_serializer message_t = {
-  ps_a = ps_message_t;
-  ps_able = mk_parseable_serializeable ps_message_t;
-  eq_property = ();
-}
-
 [@@with_bytes bytes]
 type client_state = {
   server: principal;
@@ -77,7 +67,7 @@ let server_receive_request_send_response comm_keys_ids server msg_id =
   let Request req = msg in
   let* sid = new_session_id server in
   set_state server sid (ServerReceiveRequest { client=req.client; nonce=req.nonce } <: protocol_state);*
-  let*? msg_id = send_response server req_meta_data (Response {b=req.nonce}) in
+  let*? msg_id = send_response server req_meta_data (Response req.nonce) in
   return (Some msg_id)
 
 val client_receive_response:
@@ -90,6 +80,6 @@ let client_receive_response client sid msg_id =
   let*? (msg, _) = receive_response client cmeta_data msg_id in
   guard_tr (Response? msg);*?
   let Response res = msg in
-  guard_tr (res.b = nonce);*?
+  guard_tr (res = nonce);*?
   set_state client sid (ClientReceiveResponse { server; cmeta_data; nonce } <: protocol_state);*
   return (Some ())

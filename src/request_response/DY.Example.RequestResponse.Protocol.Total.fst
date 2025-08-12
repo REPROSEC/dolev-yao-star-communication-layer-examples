@@ -21,10 +21,12 @@ type request = {
 [@@with_bytes bytes]
 type message_t =
   | Request: request -> message_t
-  | Response: com_send_byte -> message_t
+  | Response: bytes -> message_t
 
 %splice [ps_message_t] (gen_parser (`message_t))
 %splice [ps_message_t_is_well_formed] (gen_is_well_formed_lemma (`message_t))
 
-instance parseable_serializeable_message_t: parseable_serializeable bytes message_t
-  = mk_parseable_serializeable ps_message_t
+instance comm_layer_reqres_config_protocol: comm_layer_reqres_config message_t = {
+  tag = "DY.Lib.Communication.Layer.Reqres.Protocol";
+  ps_a = ps_message_t;
+}

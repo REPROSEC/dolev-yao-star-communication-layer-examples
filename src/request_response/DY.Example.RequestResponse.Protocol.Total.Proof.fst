@@ -15,17 +15,17 @@ instance crypto_usages_protocol = default_crypto_usages
 
 val pke_pred_list_protocol: list (string & pke_crypto_predicate)
 let pke_pred_list_protocol = [
-  pke_crypto_predicates_communication_layer_and_tag
+  pke_crypto_predicates_communication_layer_reqres_and_tag message_t;
 ]
 
 val sign_pred_list_protocol: list (string & sign_crypto_predicate)
 let sign_pred_list_protocol = [
-  sign_crypto_predicates_communication_layer_and_tag;
+  sign_crypto_predicates_communication_layer_reqres_and_tag message_t;
 ]
 
 val aead_pred_list_protocol: list (string & aead_crypto_predicate)
 let aead_pred_list_protocol = [
-  aead_crypto_predicates_communication_layer_and_tag;
+  aead_crypto_predicates_communication_layer_reqres_and_tag message_t;
 ]
 
 #push-options "--ifuel 2 --fuel 0"

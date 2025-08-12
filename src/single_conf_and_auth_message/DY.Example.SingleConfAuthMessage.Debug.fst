@@ -2,6 +2,7 @@ module DY.Example.SingleConfAuthMessage.Debug
 
 open DY.Core
 open DY.Lib
+open DY.Example.SingleConfAuthMessage.Protocol.Total
 open DY.Example.SingleConfAuthMessage.Protocol.Stateful
 
 (*** Example Protocol Run with Trace Printing ***)
@@ -12,7 +13,7 @@ let debug () : traceful (option unit) =
   let sender = "sender" in
   let receiver = "receiver" in
 
-  let*? sender_comm_keys_sess_ids, receiver_comm_keys_sess_ids = initialize_communication sender receiver in
+  let*? sender_comm_keys_sess_ids, receiver_comm_keys_sess_ids = initialize_communication_core single_message sender receiver in
 
   // sender prepare message
   let* sender_session_id = prepare_message sender receiver in
