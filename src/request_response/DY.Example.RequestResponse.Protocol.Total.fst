@@ -27,6 +27,6 @@ type message_t =
 %splice [ps_message_t_is_well_formed] (gen_is_well_formed_lemma (`message_t))
 
 instance comm_layer_reqres_config_protocol: comm_layer_reqres_config message_t = {
-  tag = "DY.Lib.Communication.Layer.Reqres.Protocol";
-  ps_a = ps_message_t;
+  reqres_tag = "DY.Lib.Communication.Layer.Reqres.Protocol";
+  reqres_ps_a = ps_message_t;
 }

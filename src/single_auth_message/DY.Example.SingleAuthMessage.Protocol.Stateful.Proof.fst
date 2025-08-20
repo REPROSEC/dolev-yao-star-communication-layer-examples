@@ -63,7 +63,7 @@ let comm_layer_event_preds = {
 }
 
 let all_events = [
-  event_predicate_communication_layer_core_and_tag comm_layer_event_preds;
+  event_predicate_and_tag_communication_layer_core comm_layer_event_preds;
   mk_event_tag_and_pred event_predicate_protocol
 ]
 

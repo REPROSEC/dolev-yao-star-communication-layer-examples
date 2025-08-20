@@ -42,7 +42,7 @@ let protocol_state_tag = "Protocol.State"
 let all_sessions = [
   pki_tag_and_invariant;
   private_keys_tag_and_invariant;
-  state_predicates_communication_layer_reqres_and_tag message_t;
+  state_predicate_and_tag_communication_layer_reqres message_t;
   mk_local_state_tag_and_pred state_predicates_protocol;
 ]
 
