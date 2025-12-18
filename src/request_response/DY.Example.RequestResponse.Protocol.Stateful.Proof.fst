@@ -12,7 +12,7 @@ open DY.Example.RequestResponse.Protocol.Stateful
 
 (*** State Predicates ***)
 
-#push-options "--ifuel 3 --z3rlimit 20"
+#push-options "--ifuel 3 --z3rlimit 50"
 let state_predicates_protocol: local_state_predicate protocol_state = {
   pred = (fun tr prin sess_id st ->
     match st with
@@ -31,8 +31,19 @@ let state_predicates_protocol: local_state_predicate protocol_state = {
       is_secret (comm_label client server) tr nonce
     )
   );
-  pred_later = (fun tr1 tr2 prin sess_id state -> ());
-  pred_knowable = (fun tr prin sess_id state -> ());
+  pred_later = (fun tr1 tr2 prin sess_id st -> ());
+  pred_knowable = (fun tr prin sess_id st -> (
+    match st with
+    | ClientSendRequest {server; cmeta_data; nonce} -> (
+      comm_meta_data_knowable_proof tr message_t protocol_state sess_id st prin cmeta_data;
+      ()
+    )
+    | ServerReceiveRequest {client; nonce} -> ()
+    | ClientReceiveResponse {server; cmeta_data; nonce} -> (
+      comm_meta_data_knowable_proof tr message_t protocol_state sess_id st prin cmeta_data;
+      ()
+    )
+  ));
 }
 #pop-options
 
