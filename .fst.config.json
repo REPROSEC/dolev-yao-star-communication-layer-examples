@@ -12,6 +12,7 @@
     "${DY_HOME}/src/lib/utils",
     "${DY_HOME}/src/lib/communication",
     "${DY_HOME}/src/lib/label",
+    "src/",
     "src/single_conf_message",
     "src/single_auth_message",
     "src/single_conf_and_auth_message",

@@ -1,6 +1,6 @@
 DY_HOME ?= ../../..
 
-EXAMPLES = request_response
+EXAMPLES = request_response .
 EXAMPLE_DIRS = $(addprefix ../, $(EXAMPLES))
 include $(DY_HOME)/Makefile
 

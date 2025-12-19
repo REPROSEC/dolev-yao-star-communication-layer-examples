@@ -1,10 +1,12 @@
 {
 	"folders": [
 		{
-			"path": "../../dolev-yao-star-extrinsic"
+			"name": "dystar-communication-layer-examples",
+			"path": ".."
 		},
 		{
-			"path": ".."
+			"name": "dolev-yao-star-extrinsic",
+			"path": "../../dolev-yao-star-extrinsic"
 		}
 	],
 	"settings": {
