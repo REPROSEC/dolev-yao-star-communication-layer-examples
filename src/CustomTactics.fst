@@ -27,21 +27,3 @@ let assumption' () : Tac unit =
     __assumption_aux' (cur_vars ())
 
 let grewrite' = grewrite
-
-(*let grewrite' (t1 t2 : term) : Tac unit =
-    let e = tcut (mk_sq_eq t1 t2) in
-    let e = pack_ln (Tv_Var (bv_of_binder e)) in
-    pointwise (fun () ->
-      (* If the LHS is a uvar, do nothing, so we do not instantiate it. *)
-      let is_uvar =
-        match term_as_formula (cur_goal()) with
-        | Comp (Eq _) lhs rhs ->
-          (match inspect_ln lhs with
-           | Tv_Uvar _ _ -> true
-           | _ -> false)
-        | _ -> false
-      in
-      if is_uvar
-      then trefl ()
-      else try t_exact false false e with | _ -> trefl ())
-*)

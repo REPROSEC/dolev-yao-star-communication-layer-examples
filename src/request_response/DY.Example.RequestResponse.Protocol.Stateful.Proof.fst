@@ -189,7 +189,7 @@ val server_receive_request_send_response_proof:
 let server_receive_request_send_response_proof tr comm_keys_ids server msg_id =
   let (_, tr_out) = server_receive_request_send_response comm_keys_ids server msg_id tr in
   let (x_recv, tr_recv) = receive_request comm_keys_ids server msg_id tr in
-  receive_request_proof tr message_t comm_keys_ids server msg_id;
+  receive_request_proof message_t tr comm_keys_ids server msg_id;
   assert(trace_invariant tr_recv);
   match x_recv with
   | None -> assert(tr_recv == tr_out)
@@ -206,7 +206,7 @@ let server_receive_request_send_response_proof tr comm_keys_ids server msg_id =
       assert(trace_invariant tr_st) by (
         let open FStar.Tactics in
         let _ = tcut (quote (squash (
-          let ((), tr_st) = set_state #protocol_state #local_state_protocol_state server sid (ServerReceiveRequest { client=req.client; nonce=req.nonce } <: protocol_state) tr_sid in
+          let (_, tr_st) = set_state #protocol_state #local_state_protocol_state server sid (ServerReceiveRequest { client=req.client; nonce=req.nonce } <: protocol_state) tr_sid in
           trace_invariant tr_st
         ))) in
 
@@ -313,7 +313,7 @@ let client_receive_response_proof tr client sid msg_id =
             assert(trace_invariant tr_set) by (
               let open FStar.Tactics in
               let _ = tcut (quote (squash (
-                let ((), tr_set) = set_state #protocol_state #local_state_protocol_state client sid (ClientReceiveResponse { server; cmeta_data; nonce } <: protocol_state) tr_gd3 in
+                let (_, tr_set) = set_state #protocol_state #local_state_protocol_state client sid (ClientReceiveResponse { server; cmeta_data; nonce } <: protocol_state) tr_gd3 in
                 trace_invariant tr_set
               ))) in
 
