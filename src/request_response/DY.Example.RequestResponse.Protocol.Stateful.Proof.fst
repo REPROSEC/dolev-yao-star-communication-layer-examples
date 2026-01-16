@@ -4,7 +4,7 @@ open Comparse
 open DY.Core
 open DY.Lib
 
-open CustomTactics
+open DY.Communication.Example.CustomTactics
 
 open DY.Example.RequestResponse.Protocol.Total
 open DY.Example.RequestResponse.Protocol.Total.Proof

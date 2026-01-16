@@ -1,4 +1,4 @@
-module CustomTactics
+module DY.Communication.Example.CustomTactics
 
 open FStar.Tactics
 
