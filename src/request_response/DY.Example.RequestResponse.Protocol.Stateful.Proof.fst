@@ -20,7 +20,7 @@ let state_predicates_protocol: local_state_predicate protocol_state = {
     match st with
     | ClientSendRequest {server; cmeta_data; nonce} -> (
       let client = prin in
-      comm_client_state_invariant tr message_t client cmeta_data /\
+      comm_meta_data_knowable tr message_t client cmeta_data /\
       is_secret (comm_label client server) tr nonce
     )
     | ServerReceiveRequest {client; nonce} -> (
@@ -31,7 +31,7 @@ let state_predicates_protocol: local_state_predicate protocol_state = {
     )
     | ClientReceiveResponse {server; cmeta_data; nonce} -> (
       let client = prin in
-      comm_client_state_invariant tr message_t client cmeta_data /\
+      comm_meta_data_knowable tr message_t client cmeta_data /\
       is_secret (comm_label client server) tr nonce
     )
   );
@@ -155,9 +155,9 @@ let client_send_request_proof tr comm_keys_ids client server =
   let (nonce, tr_nc) = mk_rand NoUsage (comm_label client server) 32 tr in
   assert(trace_invariant tr_nc);
   let payload = Request {client; nonce} in
-  let (x_snd, tr_snd) = send_request comm_keys_ids client server payload tr_nc in
+  let (x_snd, tr_snd) = send_request Unauthenticated comm_keys_ids client server payload tr_nc in
   
-  send_request_proof tr_nc comm_keys_ids client server payload;
+  send_request_proof tr_nc Unauthenticated comm_keys_ids client server payload;
   assert(trace_invariant tr_snd);
   match x_snd with
   | None -> ()
@@ -165,13 +165,13 @@ let client_send_request_proof tr comm_keys_ids client server =
     let (sid, tr_sid) = new_session_id client tr_snd in
     assert(trace_invariant tr_sid);
     let (x_st, tr_st) = set_state client sid (ClientSendRequest { server; cmeta_data; nonce } <: protocol_state) tr_sid in
-    derive_comm_client_state_invariant tr_sid cmeta_data client;
+    derive_comm_meta_data_knowable tr_sid Unauthenticated cmeta_data client;
     assert(trace_invariant tr_st);
     ()
   )
 #pop-options
 
-#push-options "--ifuel 0 --fuel 0 --z3rlimit 50"
+#push-options "--ifuel 0 --fuel 0 --z3rlimit 100"
 val server_receive_request_send_response_proof:
   tr:trace ->
   comm_keys_ids:communication_keys_sess_ids ->
@@ -188,8 +188,9 @@ val server_receive_request_send_response_proof:
   [SMTPat (trace_invariant tr); SMTPat (server_receive_request_send_response comm_keys_ids server msg_id tr)]
 let server_receive_request_send_response_proof tr comm_keys_ids server msg_id =
   let (_, tr_out) = server_receive_request_send_response comm_keys_ids server msg_id tr in
-  let (x_recv, tr_recv) = receive_request comm_keys_ids server msg_id tr in
-  receive_request_proof message_t tr comm_keys_ids server msg_id;
+  let (x_recv, tr_recv) = receive_request Unauthenticated comm_keys_ids server msg_id tr in
+  receive_request_proof message_t tr Unauthenticated comm_keys_ids server msg_id;
+  
   assert(trace_invariant tr_recv);
   match x_recv with
   | None -> assert(tr_recv == tr_out)
@@ -199,6 +200,7 @@ let server_receive_request_send_response_proof tr comm_keys_ids server msg_id =
     match x_gd with
     | None -> assert(tr_gd == tr_out)
     | Some () -> (
+      receive_request_unauthenticated_properties message_t tr comm_keys_ids server msg_id;
       let Request req = msg in
       let (sid, tr_sid) = new_session_id server tr_gd in
       assert(trace_invariant tr_sid);
@@ -218,13 +220,12 @@ let server_receive_request_send_response_proof tr comm_keys_ids server msg_id =
         let _ = repeatn 4 split in
 
         norm [delta_only [`%Mklocal_state_predicate?.pred; `%state_predicates_protocol]; iota];
-        let _ = pose_lemma (quote request_message_properties_send_request tr_sid req_meta_data) in
+        let _ = pose_lemma (quote request_message_unauthenticated_properties_send_request tr_sid req_meta_data) in
         let _ = repeatn 3 smt in
         assumption' ();
         let _ = repeatn 2 smt in
 
         dump "";
-        //admit_all ();
         ()
       );
       let (x_snd, tr_snd) = send_response server req_meta_data (Response req.nonce) tr_st in
@@ -248,11 +249,10 @@ let server_receive_request_send_response_proof tr comm_keys_ids server msg_id =
         norm [delta_only [`%Mkcomm_reqres_preds?.send_response_pred; `%crpreds]; iota];
         exact (`());
 
-        let _ = pose_lemma (quote request_message_properties_request' tr_st req_meta_data) in
+        let _ = pose_lemma (quote request_message_unauthenticated_properties_request' tr_st req_meta_data) in
         let _ = repeatn 2 smt in
 
         dump "";
-        //admit_all ();
         ()
       );
       assert(tr_snd == tr_out);
@@ -327,13 +327,11 @@ let client_receive_response_proof tr client sid msg_id =
               norm [ delta_only [`%Mklocal_state_predicate?.pred; `%state_predicates_protocol]; iota];
 
               split ();
-              apply_lemma (quote derive_comm_client_state_invariant tr_gd3 cmeta_data);
               let _ = repeatn 3 smt in
               assumption' ();
-              let _ = repeatn 2 smt in 
+              let _ = repeatn 2 smt in
 
               dump "";
-              //admit_all ();
               ()
             );
             

@@ -31,16 +31,16 @@ let nonce_secrecy_client tr client server cmeta_data nonce =
 #push-options "--fuel 1"
 val server_authentication:
   tr:trace -> i:timestamp ->
-  client:principal -> server:principal -> request:message_t -> response:message_t -> key:bytes ->
+  client:principal -> response:message_t -> cmeta_data:comm_meta_data message_t ->
   Lemma
   (requires
     trace_invariant tr /\
-    event_triggered_at tr i client (CommClientReceiveResponse client server request response key <: communication_reqres_event message_t)    
+    event_triggered_at tr i client (CommClientReceiveResponse client response cmeta_data <: communication_reqres_event message_t)    
   )
   (ensures
-    event_triggered (prefix tr i) server (CommServerSendResponse server request response key <: communication_reqres_event message_t) \/
+    event_triggered (prefix tr i) cmeta_data.server (CommServerSendResponse cmeta_data.client cmeta_data.server cmeta_data.request response cmeta_data.key <: communication_reqres_event message_t) \/
     is_corrupt (prefix tr i) (principal_label client) \/ 
-    is_corrupt (prefix tr i) (principal_label server)
+    is_corrupt (prefix tr i) (principal_label cmeta_data.server)
   )
-let server_authentication tr i client server request response key = ()
+let server_authentication tr i client response cmeta_data = ()
 #pop-options

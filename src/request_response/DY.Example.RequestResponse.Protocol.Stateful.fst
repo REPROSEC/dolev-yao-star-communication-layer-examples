@@ -52,7 +52,7 @@ val client_send_request:
 let client_send_request comm_keys_ids client server =
   let* nonce = mk_rand NoUsage (join (principal_label client) (principal_label server)) 32 in
   let payload = Request {client; nonce} in
-  let*? (msg_id, cmeta_data) = send_request comm_keys_ids client server payload in
+  let*? (msg_id, cmeta_data) = send_request Unauthenticated comm_keys_ids client server payload in
   let* sid = new_session_id client in
   set_state client sid (ClientSendRequest { server; cmeta_data; nonce } <: protocol_state);*
   return (Some (sid, msg_id))
@@ -62,7 +62,7 @@ val server_receive_request_send_response:
   principal -> timestamp ->
   traceful (option timestamp)
 let server_receive_request_send_response comm_keys_ids server msg_id =
-  let*? (msg, req_meta_data) = receive_request comm_keys_ids server msg_id in
+  let*? (msg, req_meta_data) = receive_request Unauthenticated comm_keys_ids server msg_id in
   guard_tr (Request? msg);*?
   let Request req = msg in
   let* sid = new_session_id server in

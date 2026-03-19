@@ -19,7 +19,7 @@ type request = {
 %splice [ps_request_is_well_formed] (gen_is_well_formed_lemma (`request))
 
 [@@with_bytes bytes]
-type message_t =
+type message_t:eqtype =
   | Request: request -> message_t
   | Response: bytes -> message_t
 
