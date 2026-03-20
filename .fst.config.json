@@ -18,6 +18,7 @@
     "src/single_conf_and_auth_message",
     "src/login",
     "src/single_message_protocol_crypto",
-    "src/request_response"
+    "src/request_response",
+    "src/request_response_authenticated"
   ] 
 }

@@ -1,4 +1,4 @@
-module DY.Example.RequestResponse.Protocol.Stateful.Proof
+module DY.Example.RequestResponseAuthenticated.Protocol.Stateful.Proof
 
 open Comparse
 open DY.Core
@@ -6,9 +6,9 @@ open DY.Lib
 
 open DY.Communication.Example.CustomTactics
 
-open DY.Example.RequestResponse.Protocol.Total
-open DY.Example.RequestResponse.Protocol.Total.Proof
-open DY.Example.RequestResponse.Protocol.Stateful
+open DY.Example.RequestResponseAuthenticated.Protocol.Total
+open DY.Example.RequestResponseAuthenticated.Protocol.Total.Proof
+open DY.Example.RequestResponseAuthenticated.Protocol.Stateful
 
 #set-options "--fuel 0 --ifuel 0 --z3cliopt 'smt.qi.eager_threshold=100'"
 
@@ -27,7 +27,7 @@ let state_predicates_protocol: local_state_predicate protocol_state = {
       let server = prin in
       is_knowable_by (principal_label server) tr nonce /\
       (is_secret (comm_label client server) tr nonce \/
-        is_well_formed message_t (is_publishable tr) (Request {client; nonce}))
+        is_corrupt tr (principal_label client))
     )
     | ClientReceiveResponse {server; cmeta_data; nonce} -> (
       let client = prin in
@@ -86,7 +86,7 @@ let all_state_update_preds = [
 instance crpreds: comm_reqres_preds message_t = {
   send_request_pred = (fun tr client server (payload:message_t) key_label ->
     match payload with
-    | Request {client; nonce} -> (
+    | Request {nonce} -> (
       is_secret (comm_label client server) tr nonce
     )
     | Response b -> True
@@ -154,10 +154,10 @@ val client_send_request_proof:
 let client_send_request_proof tr comm_keys_ids client server =
   let (nonce, tr_nc) = mk_rand NoUsage (comm_label client server) 32 tr in
   assert(trace_invariant tr_nc);
-  let payload = Request {client; nonce} in
-  let (x_snd, tr_snd) = send_request comm_keys_ids client server payload tr_nc in
+  let payload = Request {nonce} in
+  let (x_snd, tr_snd) = send_request_authenticated comm_keys_ids client server payload tr_nc in
   
-  send_request_proof tr_nc comm_keys_ids client server payload;
+  send_request_authenticated_proof tr_nc comm_keys_ids client server payload;
   assert(trace_invariant tr_snd);
   match x_snd with
   | None -> ()
@@ -169,6 +169,30 @@ let client_send_request_proof tr comm_keys_ids client server =
     assert(trace_invariant tr_st);
     ()
   )
+#pop-options
+
+#push-options "--z3rlimit 20"
+val helper_lemma_server_state_predicate:
+  tr:trace ->
+  client:principal ->
+  server:principal ->
+  sid:state_id ->
+  req_meta_data:comm_meta_data message_t ->
+  req:request ->
+  Lemma
+  (requires
+    trace_invariant tr /\
+    Some client = req_meta_data.client /\
+    Request req == req_meta_data.request /\
+    event_triggered tr server (CommServerReceiveRequest req_meta_data.client server req_meta_data.request req_meta_data.key <: communication_reqres_event message_t)
+  )
+  (ensures 
+    state_predicates_protocol.pred tr server sid (ServerReceiveRequest { client; nonce=req.nonce })
+  )
+let helper_lemma_server_state_predicate tr client server sid req_meta_data req = 
+  request_message_authenticated_properties tr server req_meta_data;
+  assert(principal_label client `can_flow tr` long_term_key_label client);
+  ()
 #pop-options
 
 #push-options "--ifuel 0 --fuel 0 --z3rlimit 100"
@@ -188,8 +212,8 @@ val server_receive_request_send_response_proof:
   [SMTPat (trace_invariant tr); SMTPat (server_receive_request_send_response comm_keys_ids server msg_id tr)]
 let server_receive_request_send_response_proof tr comm_keys_ids server msg_id =
   let (_, tr_out) = server_receive_request_send_response comm_keys_ids server msg_id tr in
-  let (x_recv, tr_recv) = receive_request comm_keys_ids server msg_id tr in
-  receive_request_proof message_t tr comm_keys_ids server msg_id;
+  let (x_recv, tr_recv) = receive_request_authenticated comm_keys_ids server msg_id tr in
+  receive_request_authenticated_proof message_t tr comm_keys_ids server msg_id;
   
   assert(trace_invariant tr_recv);
   match x_recv with
@@ -200,15 +224,17 @@ let server_receive_request_send_response_proof tr comm_keys_ids server msg_id =
     match x_gd with
     | None -> assert(tr_gd == tr_out)
     | Some () -> (
-      receive_request_properties message_t tr comm_keys_ids server msg_id;
+      receive_request_authenticated_properties #message_t tr comm_keys_ids server msg_id;
+      assert(Some? req_meta_data.client);
+      let Some client = req_meta_data.client in
       let Request req = msg in
       let (sid, tr_sid) = new_session_id server tr_gd in
       assert(trace_invariant tr_sid);
-      let ((), tr_st) = set_state server sid (ServerReceiveRequest { client=req.client; nonce=req.nonce } <: protocol_state) tr_sid in
+      let ((), tr_st) = set_state server sid (ServerReceiveRequest { client; nonce=req.nonce } <: protocol_state) tr_sid in
       assert(trace_invariant tr_st) by (
         let open FStar.Tactics in
         let _ = tcut (quote (squash (
-          let (_, tr_st) = set_state #protocol_state #local_state_protocol_state server sid (ServerReceiveRequest { client=req.client; nonce=req.nonce } <: protocol_state) tr_sid in
+          let (_, tr_st) = set_state #protocol_state #local_state_protocol_state server sid (ServerReceiveRequest { client; nonce=req.nonce } <: protocol_state) tr_sid in
           trace_invariant tr_st
         ))) in
 
@@ -219,15 +245,17 @@ let server_receive_request_send_response_proof tr comm_keys_ids server msg_id =
         exact (`state_update_predicate_protocol);
         let _ = repeatn 4 split in
 
-        norm [delta_only [`%Mklocal_state_predicate?.pred; `%state_predicates_protocol]; iota];
-        let _ = pose_lemma (quote request_message_properties_send_request tr_sid req_meta_data) in
-        let _ = repeatn 3 smt in
+        // state_predicates_protocol.pred tr server sid (ServerReceiveRequest { client; nonce=req.nonce })
+        apply_lemma (quote helper_lemma_server_state_predicate tr_sid client server sid req_meta_data);
+        
+        let _ = repeatn 2 smt in
         assumption' ();
         let _ = repeatn 2 smt in
 
         dump "";
         ()
       );
+      
       let (x_snd, tr_snd) = send_response server req_meta_data (Response req.nonce) tr_st in
       assert(trace_invariant tr_snd) by (
         let open FStar.Tactics in
@@ -249,12 +277,13 @@ let server_receive_request_send_response_proof tr comm_keys_ids server msg_id =
         norm [delta_only [`%Mkcomm_reqres_preds?.send_response_pred; `%crpreds]; iota];
         exact (`());
 
-        let _ = pose_lemma (quote request_message_properties_request' tr_st req_meta_data) in
+        let _ = pose_lemma (quote request_message_authenticated_properties tr_st server req_meta_data) in
         let _ = repeatn 2 smt in
 
         dump "";
         ()
       );
+
       assert(tr_snd == tr_out);
       ()
     )
