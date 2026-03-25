@@ -92,8 +92,8 @@ instance crpreds: comm_reqres_preds message_t = {
     | Response b -> True
   );
   send_request_pred_later = (fun tr1 tr2 client server payload key_label -> ());
-  send_response_pred = (fun tr server request response key_label -> True);
-  send_response_pred_later = (fun tr1 tr2 server request response key_label -> ())
+  send_response_pred = (fun tr client server request response key_label -> True);
+  send_response_pred_later = (fun tr1 tr2 client server request response key_label -> ())
 }
 #pop-options
 
