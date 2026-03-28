@@ -137,7 +137,8 @@ let _:squash (has_communication_layer_reqres_predicates message_t) = ()
 
 (*** Proofs ***)
 
-#push-options "--ifuel 0 --fuel 0 --z3rlimit 100"
+#restart-solver
+#push-options "--ifuel 0 --fuel 0 --z3rlimit 75"
 val client_send_request_proof:
   tr:trace ->
   comm_keys_ids:communication_keys_sess_ids ->
@@ -165,12 +166,13 @@ let client_send_request_proof tr comm_keys_ids client server =
     let (sid, tr_sid) = new_session_id client tr_snd in
     assert(trace_invariant tr_sid);
     let (x_st, tr_st) = set_state client sid (ClientSendRequest { server; cmeta_data; nonce } <: protocol_state) tr_sid in
-    derive_comm_meta_data_knowable tr_sid cmeta_data client;
+    derive_comm_meta_data_knowable_client tr_sid cmeta_data client;
     assert(trace_invariant tr_st);
     ()
   )
 #pop-options
 
+#restart-solver
 #push-options "--z3rlimit 20"
 val helper_lemma_server_state_predicate:
   tr:trace ->
@@ -195,7 +197,7 @@ let helper_lemma_server_state_predicate tr client server sid req_meta_data req =
   ()
 #pop-options
 
-#push-options "--ifuel 0 --fuel 0 --z3rlimit 100"
+#push-options "--ifuel 0 --fuel 0 --z3rlimit 50"
 val server_receive_request_send_response_proof:
   tr:trace ->
   comm_keys_ids:communication_keys_sess_ids ->
@@ -290,7 +292,7 @@ let server_receive_request_send_response_proof tr comm_keys_ids server msg_id =
   )
 #pop-options
 
-
+#restart-solver
 #push-options "--ifuel 0 --fuel 0 --z3rlimit 30"
 val client_receive_response_proof:
   tr:trace ->
